@@ -14,24 +14,29 @@ type 'a lit =
   | Stat of string * 'a
 
 type 'a formula =
-  | Lit of 'a lit
+  | Lit of 'a
   | Unop of unop * 'a formula
   | Binop of binop * 'a formula * 'a formula
 
-type 'a safe =
-  | Leaf of 'a formula
-  | Forall of 'a  * 'a formula * 'a safe
-  | Exists of 'a * 'a formula * 'a safe
-  | Pand of 'a safe * 'a safe
-  | Por of 'a safe * 'a safe
+type ('a,'l) pre_safe =
+  | Leaf of 'l formula
+  | Forall of 'a  * 'l formula * ('a,'l) pre_safe
+  | Exists of 'a * 'l formula * ('a,'l) pre_safe
+  | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
+  | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
 
-type 'a general =
-  | General of 'a formula list * 'a formula
+type 'a safe = ('a, 'a lit) pre_safe
 
-type 'a program =
-  { safe : 'a safe
-  ; ensure : 'a general option
-  ; maintain : 'a general option }
+type 'l general =
+  | General of 'l formula list * 'l formula
+
+type ('a,'l) pre_program =
+  { safe : ('a, 'l) pre_safe
+  ; ensure : 'l general option
+  ; maintain : 'l general option }
+
+type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
+type 'a program = ('a, 'a lit) pre_program
 
 let fold_formula l u b =
   let rec aux = function
@@ -47,21 +52,25 @@ end
 
 module About(V : Variables) = struct
 
+  type nonrec parsed_program = V.t parsed_program
   type nonrec program = V.t program
 
   module S = Set.Make(V)
   let to_list s = S.fold (fun x y -> x::y) s []
+
+  module SString = Set.Make(String)
 
   let variables_of_dynamic = function
     | Has x -> S.singleton x
     | Link (x,y) -> S.of_list [x;y]
     | Other (_,x) -> S.singleton x
 
+  let variables_of_lit = function
+    | Dyn (_,x) -> variables_of_dynamic x
+    | Stat (_,x) -> S.singleton x
+
   let variables_of_formula =
-    let lit = function
-       | Dyn (_,x) -> variables_of_dynamic x
-       | Stat (_,x) -> S.singleton x in
-    fold_formula lit (fun _ x -> x) (fun _ -> S.union)
+    fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
 
   let extract_guard phi =
     match to_list (variables_of_formula phi) with
@@ -123,5 +132,38 @@ module About(V : Variables) = struct
     verify_guards safe
     && Option.fold ~none:true ~some:verify_general ensure
     && Option.fold ~none:true ~some:verify_general maintain
+
+  let final_of_formula ~static ~dynamic =
+    let mk_lit (b,dyn) =
+      match dyn with
+      | Has _ | Link _ -> Dyn (b,dyn)
+      | Other (s,x) ->
+         if SString.mem s dynamic then Dyn (b,dyn)
+         else
+           if b
+           then failwith "Unknown dynamic"
+           else
+             if SString.mem s static then Stat (s,x)
+             else failwith "Unknown symbol"
+    in
+    fold_formula (fun x -> Lit (mk_lit x))
+      (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
+
+  let safe_of_parsed ~static ~dynamic =
+    let rec aux = function
+      | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
+      | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
+      | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
+      | Pand (x,y) -> Pand (aux x, aux y)
+      | Por (x,y) -> Por (aux x, aux y)
+    in aux
+
+  let program_of_parsed ~static ~dynamic {safe; ensure; maintain} =
+    let general (General (xs,x)) =
+      General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
+    let safe = safe_of_parsed ~static ~dynamic safe in
+    let ensure = Option.map general ensure in
+    let maintain = Option.map general maintain in
+    {safe; ensure; maintain}
 
 end

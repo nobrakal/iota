@@ -36,7 +36,7 @@
 %left LOR
 %left LAND
 
-%start<string Program.program> program
+%start<string Program.parsed_program> program
 
 %%
 
@@ -73,13 +73,12 @@ formula_atom :
 | "(" x=formula ")" { x }
 
 lit:
-| p=UpperId x=LowerId { Stat (p,x) }
-| p=option(PLUS) x=dyn { Dyn ((match p with None -> false | Some _ -> true),x) }
+| p=option(PLUS) x=dyn { (Option.is_some p,x) }
 
 dyn:
 | HAS x=LowerId { Has x }
 | LINK x=LowerId y=LowerId { Link (x,y) }
-(* | p=UpperId x=LowerId { Other (p,x) } *)
+| p=UpperId x=LowerId { Other (p,x) }
 
 general:
 | xs=separated_nonempty_list(ARROW,formula) { let xs,x = sept_init_end xs in General (xs,x) }
