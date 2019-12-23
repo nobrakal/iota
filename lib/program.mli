@@ -18,6 +18,7 @@ type 'a formula =
   | Unop of unop * 'a formula
   | Binop of binop * 'a formula * 'a formula
 
+(** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Forall of 'a  * 'l formula * ('a,'l) pre_safe
@@ -25,17 +26,22 @@ type ('a,'l) pre_safe =
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
 
+(** A safe syntax with some meaning *)
 type 'a safe = ('a, 'a lit) pre_safe
 
 type 'l general =
   | General of 'l formula list * 'l formula
 
+(** A program which can be meaningless *)
 type ('a,'l) pre_program =
   { safe : ('a, 'l) pre_safe
   ; ensure : 'l general option
   ; maintain : 'l general option }
 
+(** A program which doesn't distinguish static and dynamic predicates *)
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
+
+(** A well-formed program *)
 type 'a program = ('a, 'a lit) pre_program
 
 val fold_formula :
@@ -58,8 +64,10 @@ sig
   val variables_of_formula : S.elt lit formula -> S.t
   val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
 
+  (** Transform a parsed program into a real one knowing static and dynamic predicates *)
   val program_of_parsed : static:SString.t -> dynamic:SString.t -> parsed_program -> program
 
+  (** Retun true iff guards are really guards and ensure and maintain are well-formed *)
   val is_valid_program : program -> bool
 
 end
