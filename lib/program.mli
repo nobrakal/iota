@@ -50,14 +50,15 @@ val fold_formula :
 
 module type Variables = sig type t val compare : t -> t -> int end
 
-module About :
+module SString : Set.S with type elt = string
+
+module Make :
 functor (V : Variables) ->
 sig
   type nonrec parsed_program = V.t parsed_program
   type nonrec program = V.t program
 
   module S : Set.S with type elt = V.t
-  module SString : Set.S with type elt = string
 
   val variables_of_dynamic : S.elt dynamic -> S.t
   val variables_of_lit : S.elt lit -> S.t

@@ -50,15 +50,15 @@ module type Variables = sig
   val compare : t -> t -> int
 end
 
-module About(V : Variables) = struct
+module SString = Set.Make(String)
+
+module Make(V : Variables) = struct
 
   type nonrec parsed_program = V.t parsed_program
   type nonrec program = V.t program
 
   module S = Set.Make(V)
   let to_list s = S.fold (fun x y -> x::y) s []
-
-  module SString = Set.Make(String)
 
   let variables_of_dynamic = function
     | Has x -> S.singleton x
@@ -141,10 +141,10 @@ module About(V : Variables) = struct
          if SString.mem s dynamic then Dyn (b,dyn)
          else
            if b
-           then failwith "Unknown dynamic"
+           then failwith ("Unknown dynamic: " ^ s)
            else
              if SString.mem s static then Stat (s,x)
-             else failwith "Unknown symbol"
+             else failwith ("Unknown symbol: " ^ s)
     in
     fold_formula (fun x -> Lit (mk_lit x))
       (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
