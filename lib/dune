@@ -1,0 +1,5 @@
+(ocamllex lexer)
+(menhir (modules parser) (flags --explain) )
+
+(library
+ (name iota))
