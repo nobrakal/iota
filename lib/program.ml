@@ -31,9 +31,9 @@ type 'l general =
   | General of 'l formula list * 'l formula
 
 type ('a,'l) pre_program =
-  { safe : ('a, 'l) pre_safe
-  ; ensure : 'l general option
-  ; maintain : 'l general option }
+  { safe : ('a, 'l) pre_safe list
+  ; ensure : 'l general list
+  ; maintain : 'l general list }
 
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
 type 'a program = ('a, 'a lit) pre_program
@@ -129,9 +129,9 @@ module Make(V : Variables) = struct
        exists_xvar && fv_phi_incl_fv_guards
 
   let is_valid_program {safe; ensure; maintain} =
-    verify_guards safe
-    && Option.fold ~none:true ~some:verify_general ensure
-    && Option.fold ~none:true ~some:verify_general maintain
+    List.for_all verify_guards safe
+    && List.for_all verify_general ensure
+    && List.for_all verify_general maintain
 
   let final_of_formula ~static ~dynamic =
     let mk_lit (b,dyn) =
@@ -161,9 +161,9 @@ module Make(V : Variables) = struct
   let program_of_parsed ~static ~dynamic {safe; ensure; maintain} =
     let general (General (xs,x)) =
       General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
-    let safe = safe_of_parsed ~static ~dynamic safe in
-    let ensure = Option.map general ensure in
-    let maintain = Option.map general maintain in
+    let safe = List.map (safe_of_parsed ~static ~dynamic) safe in
+    let ensure = List.map general ensure in
+    let maintain = List.map general maintain in
     {safe; ensure; maintain}
 
 end

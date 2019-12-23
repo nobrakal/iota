@@ -29,12 +29,17 @@ rule token = parse
 
   | "maintain" { MAINTAIN }
   | "ensure" { ENSURE }
+
   | "forall" { FORALL }
   | "exists" { EXISTS }
+
   | "->"     { ARROW }
   | "+"      { PLUS }
   | "&&"     { LAND }
   | "||"     { LOR }
+
+  | ";"      { SEMICOLON }
+  | ","      { COMMA }
 
   | "="      { EQ }
   | "not"    { NOT  }
@@ -42,13 +47,16 @@ rule token = parse
   | "Has"    { HAS }
   | "Link"   { LINK }
 
+  | "("      { LPAREN }
+  | ")"      { RPAREN }
+
   | lowercase ident* as id    { LowerId(id) }
   | uppercase ident* as id    { UpperId(id) }
 
-  | "/*"                { down_stack () ; comment lexbuf }
+  | "(*"                { down_stack () ; comment lexbuf }
 
   (** Lexing error. *)
-  | _                   { failwith "unexpected character." }
+  | _                   { failwith ("unexpected character: " ^ (Lexing.lexeme lexbuf)) }
 
 and comment = parse
   | "(*"    { down_stack () ; comment lexbuf }

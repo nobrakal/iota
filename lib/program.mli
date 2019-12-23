@@ -34,9 +34,9 @@ type 'l general =
 
 (** A program which can be meaningless *)
 type ('a,'l) pre_program =
-  { safe : ('a, 'l) pre_safe
-  ; ensure : 'l general option
-  ; maintain : 'l general option }
+  { safe : ('a, 'l) pre_safe list
+  ; ensure : 'l general list
+  ; maintain : 'l general list }
 
 (** A program which doesn't distinguish static and dynamic predicates *)
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
