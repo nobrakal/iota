@@ -48,6 +48,15 @@ val fold_formula :
   ('a -> 'b) ->
   (unop -> 'b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
 
+type gen = Ensure | Maintain
+
+type validity =
+  | Good
+  | IllFormedGuard
+  | IllFormedGeneral of gen
+
+val string_of_validity : validity -> string
+
 module type Variables = sig type t val compare : t -> t -> int end
 
 module SString : Set.S with type elt = string
@@ -68,7 +77,7 @@ sig
   (** Transform a parsed program into a real one knowing static and dynamic predicates *)
   val program_of_parsed : static:SString.t -> dynamic:SString.t -> parsed_program -> program
 
-  (** Retun true iff guards are really guards and ensure and maintain are well-formed *)
-  val is_valid_program : program -> bool
+  (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
+  val validate_program : program -> validity
 
 end

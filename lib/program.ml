@@ -45,6 +45,23 @@ let fold_formula l u b =
     | Binop (x,y,z) -> b x (aux y) (aux z)
   in aux
 
+type gen = Ensure | Maintain
+
+type validity =
+  | Good
+  | IllFormedGuard
+  | IllFormedGeneral of gen
+
+let string_of_validity = function
+  | Good -> "Good"
+  | IllFormedGuard -> "Ill-formed guard"
+  | IllFormedGeneral g ->
+     let s =
+       match g with
+       | Ensure -> "ensure"
+       | Maintain -> "maintain" in
+     "Ill-formed "^ s ^" part"
+
 module type Variables = sig
   type t
   val compare : t -> t -> int
@@ -128,10 +145,14 @@ module Make(V : Variables) = struct
          S.for_all (fun x -> S.mem x fv_guards) (variables_of_formula phi) in
        exists_xvar && fv_phi_incl_fv_guards
 
-  let is_valid_program {safe; ensure; maintain} =
-    List.for_all verify_guards safe
-    && List.for_all verify_general ensure
-    && List.for_all verify_general maintain
+  let validate_program {safe; ensure; maintain} =
+    if not (List.for_all verify_guards safe)
+    then IllFormedGuard
+    else if not (List.for_all verify_general ensure)
+    then IllFormedGeneral (Ensure)
+    else if not (List.for_all verify_general maintain)
+    then IllFormedGeneral (Maintain)
+    else Good
 
   let final_of_formula ~static ~dynamic =
     let mk_lit (b,dyn) =
