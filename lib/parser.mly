@@ -41,7 +41,13 @@
 (*** RULES ***)
 
 program:
-  safe=safe ENSURE ensure=general MAINTAIN maintain=general EOF { {safe;ensure;maintain} }
+  safe=safe ensure=option(ensure) maintain=option(maintain) EOF { {safe;ensure;maintain} }
+
+ensure:
+| ENSURE x=general { x }
+
+maintain:
+| MAINTAIN x=general { x }
 
 safe:
 | x=safe_atom { x }

@@ -22,8 +22,8 @@ type 'a general = General of 'a formula list * 'a formula
 
 type 'a program = {
   safe : 'a safe;
-  ensure : 'a general;
-  maintain : 'a general;
+  ensure : 'a general option;
+  maintain : 'a general option;
   }
 
 val fold_formula :

@@ -30,8 +30,8 @@ type 'a general =
 
 type 'a program =
   { safe : 'a safe
-  ; ensure : 'a general
-  ; maintain : 'a general }
+  ; ensure : 'a general option
+  ; maintain : 'a general option }
 
 let fold_formula l u b =
   let rec aux = function
@@ -113,15 +113,15 @@ module About(V : Variables) = struct
          match guards with
          | [] -> true
          | x::xs ->
-            match valid_candidate phi (extract_xvar_candidates_of x xs) with
-            | None -> false
-            | Some _ -> true in
+            Option.is_some (valid_candidate phi (extract_xvar_candidates_of x xs)) in
        let fv_phi_incl_fv_guards =
          let fv_guards = List.fold_left S.union S.empty guards in
          S.for_all (fun x -> S.mem x fv_guards) (variables_of_formula phi) in
        exists_xvar && fv_phi_incl_fv_guards
 
   let is_valid_program {safe; ensure; maintain} =
-    verify_guards safe && verify_general ensure && verify_general maintain
+    verify_guards safe
+    && Option.fold ~none:true ~some:verify_general ensure
+    && Option.fold ~none:true ~some:verify_general maintain
 
 end
