@@ -82,15 +82,7 @@ let rec free_variables_of_safe = function
   | Forall (_,_,x) | Exists (_,_,x) -> free_variables_of_safe x
   | Pand (x,y) | Por (x,y) -> SString.union (free_variables_of_safe x) (free_variables_of_safe y)
 
-module type Variables = sig
-  type t
-  val compare : t -> t -> int
-end
-
-module Make(V : Variables) = struct
-
-  type nonrec parsed_program = V.t parsed_program
-  type nonrec program = V.t program
+module Make(V : Set.OrderedType) = struct
 
   module S = Set.Make(V)
   let to_list s = S.fold (fun x y -> x::y) s []
@@ -194,45 +186,44 @@ module Make(V : Variables) = struct
       match verify_variable_scope vars safe with
       | Some s -> UnboundVar s
       | None -> Good
-
-  exception ParseError of parse_error
-
-  let final_of_formula ~static ~dynamic =
-    let mk_lit (b,dyn) =
-      match dyn with
-      | Has _ | Link _ -> Dyn (b,dyn)
-      | Other (s,x) ->
-         if SString.mem s dynamic then Dyn (b,dyn)
-         else
-           if b
-           then raise (ParseError (UnboundDynamic s))
-           else
-             if SString.mem s static then Stat (s,x)
-             else raise (ParseError (UnboundSymbol s))
-    in
-    fold_formula (fun x -> Lit (mk_lit x))
-      (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
-
-  let safe_of_parsed ~static ~dynamic =
-    let rec aux = function
-      | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
-      | Var x -> Var x
-      | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
-      | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
-      | Pand (x,y) -> Pand (aux x, aux y)
-      | Por (x,y) -> Por (aux x, aux y)
-    in aux
-
-  let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
-    try
-      let general (General (xs,x)) =
-        General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
-      let vars = List.map (fun (name,x) -> name, safe_of_parsed ~static ~dynamic x) vars in
-      let safe = List.map (safe_of_parsed ~static ~dynamic) safe in
-      let ensure = List.map general ensure in
-      let maintain = List.map general maintain in
-      Ok ({vars; safe; ensure; maintain})
-    with
-       ParseError s -> Error s
-
 end
+
+exception ParseError of parse_error
+
+let final_of_formula ~static ~dynamic =
+  let mk_lit (b,dyn) =
+    match dyn with
+    | Has _ | Link _ -> Dyn (b,dyn)
+    | Other (s,x) ->
+       if SString.mem s dynamic then Dyn (b,dyn)
+       else
+         if b
+         then raise (ParseError (UnboundDynamic s))
+         else
+           if SString.mem s static then Stat (s,x)
+           else raise (ParseError (UnboundSymbol s))
+  in
+  fold_formula (fun x -> Lit (mk_lit x))
+    (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
+
+let safe_of_parsed ~static ~dynamic =
+  let rec aux = function
+    | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
+    | Var x -> Var x
+    | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
+    | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
+    | Pand (x,y) -> Pand (aux x, aux y)
+    | Por (x,y) -> Por (aux x, aux y)
+  in aux
+
+let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
+  try
+    let general (General (xs,x)) =
+      General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
+    let vars = List.map (fun (name,x) -> name, safe_of_parsed ~static ~dynamic x) vars in
+    let safe = List.map (safe_of_parsed ~static ~dynamic) safe in
+    let ensure = List.map general ensure in
+    let maintain = List.map general maintain in
+    Ok ({vars; safe; ensure; maintain})
+  with
+    ParseError s -> Error s

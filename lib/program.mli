@@ -66,16 +66,11 @@ type parse_error =
 
 val string_of_parse_error : parse_error -> string
 
-module type Variables = sig type t val compare : t -> t -> int end
-
 module SString : Set.S with type elt = string
 
 module Make :
-functor (V : Variables) ->
+functor (V : Set.OrderedType) ->
 sig
-  type nonrec parsed_program = V.t parsed_program
-  type nonrec program = V.t program
-
   module S : Set.S with type elt = V.t
 
   val variables_of_dynamic : S.elt dynamic -> S.t
@@ -83,10 +78,11 @@ sig
   val variables_of_formula : S.elt lit formula -> S.t
   val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
 
-  (** Transform a parsed program into a real one knowing static and dynamic predicates *)
-  val program_of_parsed : static:SString.t -> dynamic:SString.t -> parsed_program -> (program, parse_error) result
-
   (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
-  val validate_program : program -> validity
-
+  val validate_program : V.t program -> validity
 end
+
+(** Transform a parsed program into a real one knowing static and dynamic predicates *)
+val program_of_parsed :
+  static:SString.t -> dynamic:SString.t ->
+  'a parsed_program -> ('a program, parse_error) result
