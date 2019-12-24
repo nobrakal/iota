@@ -21,6 +21,7 @@ type 'a formula =
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
+  | Var of string
   | Forall of 'a  * 'l formula * ('a,'l) pre_safe
   | Exists of 'a * 'l formula * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
@@ -34,7 +35,8 @@ type 'l general =
 
 (** A program which can be meaningless *)
 type ('a,'l) pre_program =
-  { safe : ('a, 'l) pre_safe list
+  { vars : (string * ('a, 'l) pre_safe) list
+  ; safe : ('a, 'l) pre_safe list
   ; ensure : 'l general list
   ; maintain : 'l general list }
 
@@ -54,8 +56,15 @@ type validity =
   | Good
   | IllFormedGuard
   | IllFormedGeneral of gen
+  | UnboundVar of string
 
 val string_of_validity : validity -> string
+
+type parse_error =
+  | UnboundDynamic of string
+  | UnboundSymbol of string
+
+val string_of_parse_error : parse_error -> string
 
 module type Variables = sig type t val compare : t -> t -> int end
 
@@ -75,7 +84,7 @@ sig
   val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
 
   (** Transform a parsed program into a real one knowing static and dynamic predicates *)
-  val program_of_parsed : static:SString.t -> dynamic:SString.t -> parsed_program -> program
+  val program_of_parsed : static:SString.t -> dynamic:SString.t -> parsed_program -> (program, parse_error) result
 
   (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
   val validate_program : program -> validity

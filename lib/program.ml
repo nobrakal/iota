@@ -20,6 +20,7 @@ type 'a formula =
 
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
+  | Var of string
   | Forall of 'a  * 'l formula * ('a,'l) pre_safe
   | Exists of 'a * 'l formula * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
@@ -31,7 +32,8 @@ type 'l general =
   | General of 'l formula list * 'l formula
 
 type ('a,'l) pre_program =
-  { safe : ('a, 'l) pre_safe list
+  { vars : (string * ('a, 'l) pre_safe) list
+  ; safe : ('a, 'l) pre_safe list
   ; ensure : 'l general list
   ; maintain : 'l general list }
 
@@ -51,10 +53,12 @@ type validity =
   | Good
   | IllFormedGuard
   | IllFormedGeneral of gen
+  | UnboundVar of string
 
 let string_of_validity = function
   | Good -> "Good"
   | IllFormedGuard -> "Ill-formed guard"
+  | UnboundVar s -> "Unbound variable " ^ s
   | IllFormedGeneral g ->
      let s =
        match g with
@@ -62,12 +66,26 @@ let string_of_validity = function
        | Maintain -> "maintain" in
      "Ill-formed "^ s ^" part"
 
+type parse_error =
+  | UnboundDynamic of string
+  | UnboundSymbol of string
+
+let string_of_parse_error = function
+  | UnboundDynamic s -> "Unbound dynamic: " ^ s
+  | UnboundSymbol s -> "Unbound symbol: " ^ s
+
+module SString = Set.Make(String)
+
+let rec free_variables_of_safe = function
+  | Leaf _ -> SString.empty
+  | Var x -> SString.singleton x
+  | Forall (_,_,x) | Exists (_,_,x) -> free_variables_of_safe x
+  | Pand (x,y) | Por (x,y) -> SString.union (free_variables_of_safe x) (free_variables_of_safe y)
+
 module type Variables = sig
   type t
   val compare : t -> t -> int
 end
-
-module SString = Set.Make(String)
 
 module Make(V : Variables) = struct
 
@@ -100,7 +118,7 @@ module Make(V : Variables) = struct
     | Some (y,z) -> x = y || x = z
 
   let rec verify_guards = function
-    | Leaf _ ->
+    | Leaf _ | Var _ ->
        true
     | Forall (x,guard,phi) | Exists (x,guard,phi) ->
        is_guard_for x guard && verify_guards phi
@@ -145,14 +163,39 @@ module Make(V : Variables) = struct
          S.for_all (fun x -> S.mem x fv_guards) (variables_of_formula phi) in
        exists_xvar && fv_phi_incl_fv_guards
 
-  let validate_program {safe; ensure; maintain} =
+  exception UnboundVar' of string
+
+  let verify_variable_scope xs safe =
+    let verif acc x =
+      let fv = free_variables_of_safe x in
+      SString.iter
+        (fun s ->
+          if not (SString.mem s acc)
+          then raise (UnboundVar' s)) fv in
+    let aux (name,x) acc =
+      verif acc x;
+      SString.add name acc
+    in
+    try
+      let vars = List.fold_right aux xs SString.empty in
+      List.iter (verif vars) safe;
+      None
+    with
+    | UnboundVar' s -> Some s
+
+  let validate_program {vars; safe; ensure; maintain} =
     if not (List.for_all verify_guards safe)
     then IllFormedGuard
     else if not (List.for_all verify_general ensure)
     then IllFormedGeneral (Ensure)
     else if not (List.for_all verify_general maintain)
     then IllFormedGeneral (Maintain)
-    else Good
+    else
+      match verify_variable_scope vars safe with
+      | Some s -> UnboundVar s
+      | None -> Good
+
+  exception ParseError of parse_error
 
   let final_of_formula ~static ~dynamic =
     let mk_lit (b,dyn) =
@@ -162,10 +205,10 @@ module Make(V : Variables) = struct
          if SString.mem s dynamic then Dyn (b,dyn)
          else
            if b
-           then failwith ("Unknown dynamic: " ^ s)
+           then raise (ParseError (UnboundDynamic s))
            else
              if SString.mem s static then Stat (s,x)
-             else failwith ("Unknown symbol: " ^ s)
+             else raise (ParseError (UnboundSymbol s))
     in
     fold_formula (fun x -> Lit (mk_lit x))
       (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
@@ -173,18 +216,23 @@ module Make(V : Variables) = struct
   let safe_of_parsed ~static ~dynamic =
     let rec aux = function
       | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
+      | Var x -> Var x
       | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
       | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
       | Pand (x,y) -> Pand (aux x, aux y)
       | Por (x,y) -> Por (aux x, aux y)
     in aux
 
-  let program_of_parsed ~static ~dynamic {safe; ensure; maintain} =
-    let general (General (xs,x)) =
-      General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
-    let safe = List.map (safe_of_parsed ~static ~dynamic) safe in
-    let ensure = List.map general ensure in
-    let maintain = List.map general maintain in
-    {safe; ensure; maintain}
+  let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
+    try
+      let general (General (xs,x)) =
+        General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
+      let vars = List.map (fun (name,x) -> name, safe_of_parsed ~static ~dynamic x) vars in
+      let safe = List.map (safe_of_parsed ~static ~dynamic) safe in
+      let ensure = List.map general ensure in
+      let maintain = List.map general maintain in
+      Ok ({vars; safe; ensure; maintain})
+    with
+       ParseError s -> Error s
 
 end

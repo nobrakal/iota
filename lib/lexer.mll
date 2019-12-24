@@ -29,6 +29,7 @@ rule token = parse
 
   | "maintain" { MAINTAIN }
   | "ensure" { ENSURE }
+  | "let"    { LET }
 
   | "forall" { FORALL }
   | "exists" { EXISTS }

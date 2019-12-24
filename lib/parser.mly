@@ -25,6 +25,8 @@
 
 %token ARROW SEMICOLON ";" COMMA ","
 
+%token LET
+
 %token ENSURE MAINTAIN
 
 %token FORALL EXISTS
@@ -43,15 +45,18 @@
 (*** RULES ***)
 
 program:
-| safe=separated_list(SEMICOLON,safe) ensure=option(ensure) maintain=option(maintain) EOF
+| vars=list(letdef) safe=separated_list(SEMICOLON,safe) ensure=option(ensure) maintain=option(maintain) EOF
   { let ensure = Option.value ~default:[] ensure in
-    let maintain = Option.value ~default:[] maintain in {safe;ensure;maintain} }
+    let maintain = Option.value ~default:[] maintain in {vars;safe;ensure;maintain} }
 
 ensure:
 | ENSURE x=separated_list(SEMICOLON,general) { x }
 
 maintain:
 | MAINTAIN x=separated_list(SEMICOLON,general) { x }
+
+letdef:
+| LET x=LowerId EQ y=safe { (x,y) }
 
 safe:
 | x=safe_atom { x }
@@ -62,6 +67,7 @@ safe:
 
 safe_atom:
 | x=formula_atom { Leaf x }
+| x=LowerId { Var x }
       (* | "(" x=safe ")" { x } *)
 
 formula:
