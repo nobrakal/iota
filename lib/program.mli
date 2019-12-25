@@ -67,3 +67,18 @@ module SString : Set.S with type elt = string
 val program_of_parsed :
   static:SString.t -> dynamic:SString.t ->
   'a parsed_program -> ('a program, parse_error) result
+
+module type Manip =
+  sig
+    type t
+
+    module S : Set.S with type elt = t
+    val to_list : S.t -> S.elt list
+
+    val variables_of_dynamic : S.elt dynamic -> S.t
+    val variables_of_lit : S.elt lit -> S.t
+    val variables_of_formula : S.elt lit formula -> S.t
+    val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
+  end
+
+module Manip(V : Set.OrderedType) : Manip with type t = V.t

@@ -6,7 +6,9 @@ let rec free_variables_of_safe = function
   | Forall (_,_,x) | Exists (_,_,x) -> free_variables_of_safe x
   | Pand (x,y) | Por (x,y) -> SString.union (free_variables_of_safe x) (free_variables_of_safe y)
 
-module Make(V : Set.OrderedType) = struct
+module Make(M : Manip) = struct
+
+  open M
 
   type validity =
   | Good
@@ -25,28 +27,8 @@ let string_of_validity = function
        | Maintain -> "maintain" in
      "Ill-formed "^ s ^" part"
 
-  module S = Set.Make(V)
-  let to_list s = S.fold (fun x y -> x::y) s []
-
-  let variables_of_dynamic = function
-    | Has x -> S.singleton x
-    | Link (x,y) -> S.of_list [x;y]
-    | Other (_,x) -> S.singleton x
-
-  let variables_of_lit = function
-    | Dyn (_,x) -> variables_of_dynamic x
-    | Stat (_,x) -> S.singleton x
-
-  let variables_of_formula =
-    fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
-
-  let extract_guard phi =
-    match to_list (variables_of_formula phi) with
-    | [x;y] -> Some (x,y)
-    | _ -> None
-
   let is_guard_for x phi =
-    match extract_guard phi with
+    match M.extract_guard phi with
     | None -> false
     | Some (y,z) -> x = y || x = z
 

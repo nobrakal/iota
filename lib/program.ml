@@ -103,3 +103,39 @@ let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
     Ok ({vars; safe; ensure; maintain})
   with
     ParseError s -> Error s
+
+module type Manip =
+  sig
+    type t
+
+    module S : Set.S with type elt = t
+    val to_list : S.t -> S.elt list
+
+    val variables_of_dynamic : S.elt dynamic -> S.t
+    val variables_of_lit : S.elt lit -> S.t
+    val variables_of_formula : S.elt lit formula -> S.t
+    val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
+  end
+
+module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
+  type t = V.t
+  module S = Set.Make(V)
+  let to_list s = S.fold (fun x y -> x::y) s []
+
+  let variables_of_dynamic = function
+    | Has x -> S.singleton x
+    | Link (x,y) -> S.of_list [x;y]
+    | Other (_,x) -> S.singleton x
+
+  let variables_of_lit = function
+    | Dyn (_,x) -> variables_of_dynamic x
+    | Stat (_,x) -> S.singleton x
+
+  let variables_of_formula =
+    fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
+
+  let extract_guard phi =
+    match to_list (variables_of_formula phi) with
+    | [x;y] -> Some (x,y)
+    | _ -> None
+end
