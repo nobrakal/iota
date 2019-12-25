@@ -5,7 +5,6 @@ sig
   type invalidity =
     | IllFormedGuard
     | IllFormedGeneral of gen
-    | UnboundVar of string
 
   type validity = invalidity option
 

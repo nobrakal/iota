@@ -1,11 +1,5 @@
 open Program
 
-let rec free_variables_of_safe = function
-  | Leaf _ -> SString.empty
-  | Var x -> SString.singleton x
-  | Forall (_,_,x) | Exists (_,_,x) -> free_variables_of_safe x
-  | Pand (x,y) | Por (x,y) -> SString.union (free_variables_of_safe x) (free_variables_of_safe y)
-
 module Make(M : Manip) = struct
 
   open M
@@ -13,7 +7,6 @@ module Make(M : Manip) = struct
   type invalidity =
     | IllFormedGuard
     | IllFormedGeneral of gen
-    | UnboundVar of string
 
   type validity = invalidity option
 
@@ -22,7 +15,6 @@ module Make(M : Manip) = struct
     | Some i ->
        match i with
        | IllFormedGuard -> "Ill-formed guard"
-       | UnboundVar s -> "Unbound variable " ^ s
        | IllFormedGeneral g ->
           let s =
             match g with
@@ -81,32 +73,12 @@ module Make(M : Manip) = struct
          S.for_all (fun x -> S.mem x fv_guards) (variables_of_formula phi) in
        exists_xvar && fv_phi_incl_fv_guards
 
-  exception UnboundVar' of string
-
-  let verify_variable_scope xs safe =
-    let verif acc x =
-      let fv = free_variables_of_safe x in
-      SString.iter
-        (fun s ->
-          if not (SString.mem s acc)
-          then raise (UnboundVar' s)) fv in
-    let aux (Def (name,_,x)) acc =
-      verif acc x;
-      SString.add name acc
-    in
-    try
-      let vars = List.fold_right aux xs SString.empty in
-      List.iter (verif vars) safe;
-      None
-    with
-    | UnboundVar' s -> Some (UnboundVar s)
-
   let validate_program {vars; safe; ensure; maintain} =
-    if not (List.for_all verify_guards safe)
+    if not (List.for_all verify_guards safe && List.for_all (fun (Def (_,_,b)) -> verify_guards b) vars)
     then Some (IllFormedGuard)
     else if not (List.for_all verify_general ensure)
     then Some (IllFormedGeneral (Ensure))
     else if not (List.for_all verify_general maintain)
     then Some (IllFormedGeneral (Maintain))
-    else verify_variable_scope vars safe
+    else None
 end
