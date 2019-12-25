@@ -33,9 +33,12 @@ type 'a safe = ('a, 'a lit) pre_safe
 type 'l general =
   | General of 'l formula list * 'l formula
 
+type ('a,'l) def =
+  | Def of (string * 'a list * ('a,'l) pre_safe)
+
 (** A program which can be meaningless *)
 type ('a,'l) pre_program =
-  { vars : (string * ('a, 'l) pre_safe) list
+  { vars : ('a,'l) def list
   ; safe : ('a, 'l) pre_safe list
   ; ensure : 'l general list
   ; maintain : 'l general list }
@@ -52,14 +55,6 @@ val fold_formula :
 
 type gen = Ensure | Maintain
 
-type validity =
-  | Good
-  | IllFormedGuard
-  | IllFormedGeneral of gen
-  | UnboundVar of string
-
-val string_of_validity : validity -> string
-
 type parse_error =
   | UnboundDynamic of string
   | UnboundSymbol of string
@@ -67,20 +62,6 @@ type parse_error =
 val string_of_parse_error : parse_error -> string
 
 module SString : Set.S with type elt = string
-
-module Make :
-functor (V : Set.OrderedType) ->
-sig
-  module S : Set.S with type elt = V.t
-
-  val variables_of_dynamic : S.elt dynamic -> S.t
-  val variables_of_lit : S.elt lit -> S.t
-  val variables_of_formula : S.elt lit formula -> S.t
-  val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
-
-  (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
-  val validate_program : V.t program -> validity
-end
 
 (** Transform a parsed program into a real one knowing static and dynamic predicates *)
 val program_of_parsed :

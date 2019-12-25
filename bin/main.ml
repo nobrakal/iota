@@ -1,6 +1,6 @@
 open Iota
 
-module P = Program.Make(String)
+module S = Structure.Make(String)
 
 let main filename =
   let chan = open_in filename in
@@ -10,6 +10,6 @@ let main filename =
   match Program.program_of_parsed ~static ~dynamic ast with
   | Error s -> print_endline (Program.string_of_parse_error s)
   | Ok ast ->
-     print_endline (Program.string_of_validity (P.validate_program ast))
+     print_endline (S.string_of_validity (S.validate_program ast))
 
 let () = main (Sys.argv.(1))

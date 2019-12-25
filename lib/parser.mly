@@ -56,7 +56,7 @@ maintain:
 | MAINTAIN x=separated_list(SEMICOLON,general) { x }
 
 letdef:
-| LET x=LowerId EQ y=safe { (x,y) }
+| LET x=LowerId xs=list(LowerId) EQ y=safe { Def (x,xs,y) }
 
 safe:
 | x=safe_atom { x }
