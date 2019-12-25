@@ -2,11 +2,12 @@ open Program
 
 module Make(M : Manip) :
 sig
-  type validity =
-    | Good
+  type invalidity =
     | IllFormedGuard
     | IllFormedGeneral of gen
     | UnboundVar of string
+
+  type validity = invalidity option
 
   val string_of_validity : validity -> string
 

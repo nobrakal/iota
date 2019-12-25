@@ -10,22 +10,25 @@ module Make(M : Manip) = struct
 
   open M
 
-  type validity =
-  | Good
-  | IllFormedGuard
-  | IllFormedGeneral of gen
-  | UnboundVar of string
+  type invalidity =
+    | IllFormedGuard
+    | IllFormedGeneral of gen
+    | UnboundVar of string
 
-let string_of_validity = function
-  | Good -> "Good"
-  | IllFormedGuard -> "Ill-formed guard"
-  | UnboundVar s -> "Unbound variable " ^ s
-  | IllFormedGeneral g ->
-     let s =
-       match g with
-       | Ensure -> "ensure"
-       | Maintain -> "maintain" in
-     "Ill-formed "^ s ^" part"
+  type validity = invalidity option
+
+  let string_of_validity = function
+    | None -> "Good"
+    | Some i ->
+       match i with
+       | IllFormedGuard -> "Ill-formed guard"
+       | UnboundVar s -> "Unbound variable " ^ s
+       | IllFormedGeneral g ->
+          let s =
+            match g with
+            | Ensure -> "ensure"
+            | Maintain -> "maintain" in
+          "Ill-formed "^ s ^" part"
 
   let is_guard_for x phi =
     match M.extract_guard phi with
@@ -96,17 +99,14 @@ let string_of_validity = function
       List.iter (verif vars) safe;
       None
     with
-    | UnboundVar' s -> Some s
+    | UnboundVar' s -> Some (UnboundVar s)
 
   let validate_program {vars; safe; ensure; maintain} =
     if not (List.for_all verify_guards safe)
-    then IllFormedGuard
+    then Some (IllFormedGuard)
     else if not (List.for_all verify_general ensure)
-    then IllFormedGeneral (Ensure)
+    then Some (IllFormedGeneral (Ensure))
     else if not (List.for_all verify_general maintain)
-    then IllFormedGeneral (Maintain)
-    else
-      match verify_variable_scope vars safe with
-      | Some s -> UnboundVar s
-      | None -> Good
+    then Some (IllFormedGeneral (Maintain))
+    else verify_variable_scope vars safe
 end
