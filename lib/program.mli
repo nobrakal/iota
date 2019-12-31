@@ -21,7 +21,8 @@ type 'a formula =
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
-  | Var of string
+  | Var of 'a
+  | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a  * 'l formula * ('a,'l) pre_safe
   | Exists of 'a * 'l formula * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
@@ -34,7 +35,7 @@ type 'l general =
   | General of 'l formula list * 'l formula
 
 type ('a,'l) def =
-  | Def of (string * 'a list * ('a,'l) pre_safe)
+  | Def of ('a * 'a list * ('a,'l) pre_safe)
 
 (** A program which can be meaningless *)
 type ('a,'l) pre_program =
@@ -74,10 +75,12 @@ module type Manip =
 
     module S : Set.S with type elt = t
     val to_list : S.t -> S.elt list
+    module M : Map.S with type key = t
 
     val variables_of_dynamic : S.elt dynamic -> S.t
     val variables_of_lit : S.elt lit -> S.t
     val variables_of_formula : S.elt lit formula -> S.t
+    val variables_of_safe : S.elt safe -> S.t
     val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
   end
 

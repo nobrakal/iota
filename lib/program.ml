@@ -20,7 +20,8 @@ type 'a formula =
 
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
-  | Var of string
+  | Var of 'a
+  | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a  * 'l formula * ('a,'l) pre_safe
   | Exists of 'a * 'l formula * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
@@ -32,7 +33,7 @@ type 'l general =
   | General of 'l formula list * 'l formula
 
 type ('a,'l) def =
-  | Def of (string * 'a list * ('a,'l) pre_safe)
+  | Def of ('a * 'a list * ('a,'l) pre_safe)
 
 type ('a,'l) pre_program =
   { vars : ('a,'l) def list
@@ -84,6 +85,7 @@ let safe_of_parsed ~static ~dynamic =
   let rec aux = function
     | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
     | Var x -> Var x
+    | Apply (x,y) -> Apply (aux x, aux y)
     | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
     | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
     | Pand (x,y) -> Pand (aux x, aux y)
@@ -110,16 +112,20 @@ module type Manip =
 
     module S : Set.S with type elt = t
     val to_list : S.t -> S.elt list
+    module M : Map.S with type key = t
 
     val variables_of_dynamic : S.elt dynamic -> S.t
     val variables_of_lit : S.elt lit -> S.t
     val variables_of_formula : S.elt lit formula -> S.t
+    val variables_of_safe : S.elt safe -> S.t
+
     val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
   end
 
 module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   type t = V.t
   module S = Set.Make(V)
+  module M = Map.Make(V)
   let to_list s = S.fold (fun x y -> x::y) s []
 
   let variables_of_dynamic = function
@@ -133,6 +139,13 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let variables_of_formula =
     fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
+
+  let rec variables_of_safe = function
+    | Leaf f -> variables_of_formula f
+    | Var x -> S.singleton x
+    | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
+    | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_formula f) (variables_of_safe x)
+    | Pand (x,y) | Por (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
 
   let extract_guard phi =
     match to_list (variables_of_formula phi) with

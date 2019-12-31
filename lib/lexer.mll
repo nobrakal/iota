@@ -41,6 +41,7 @@ rule token = parse
 
   | ";"      { SEMICOLON }
   | ","      { COMMA }
+  | "in"     { IN }
 
   | "="      { EQ }
   | "not"    { NOT  }

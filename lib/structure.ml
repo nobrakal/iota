@@ -1,29 +1,24 @@
 open Program
 
-module Make(M : Manip) = struct
+module Make(Manip : Manip) = struct
 
-  open M
+  open Manip
 
   type invalidity =
     | IllFormedGuard
     | IllFormedGeneral of gen
 
-  type validity = invalidity option
-
-  let string_of_validity = function
-    | None -> "Good"
-    | Some i ->
-       match i with
-       | IllFormedGuard -> "Ill-formed guard"
-       | IllFormedGeneral g ->
-          let s =
-            match g with
-            | Ensure -> "ensure"
-            | Maintain -> "maintain" in
-          "Ill-formed "^ s ^" part"
+  let string_of_invalidity = function
+    | IllFormedGuard -> "Ill-formed guard"
+    | IllFormedGeneral g ->
+       let s =
+         match g with
+         | Ensure -> "ensure"
+         | Maintain -> "maintain" in
+       "Ill-formed "^ s ^" part"
 
   let is_guard_for x phi =
-    match M.extract_guard phi with
+    match extract_guard phi with
     | None -> false
     | Some (y,z) -> x = y || x = z
 
@@ -32,7 +27,7 @@ module Make(M : Manip) = struct
        true
     | Forall (x,guard,phi) | Exists (x,guard,phi) ->
        is_guard_for x guard && verify_guards phi
-    | Pand (x,y) | Por (x,y) ->
+    | Pand (x,y) | Por (x,y) | Apply (x,y)  ->
        verify_guards x && verify_guards y
 
   let extract_guards = function

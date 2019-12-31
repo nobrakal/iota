@@ -6,10 +6,8 @@ sig
     | IllFormedGuard
     | IllFormedGeneral of gen
 
-  type validity = invalidity option
-
-  val string_of_validity : validity -> string
+  val string_of_invalidity : invalidity -> string
 
   (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
-  val validate_program : M.t program -> validity
+  val validate_program : M.t program -> invalidity option
 end
