@@ -61,15 +61,29 @@ letdef:
 
 safe:
 | x=safe_atom { x }
+| x=safe_strong { x }
+| x=safe_atom LAND y=safe { Pand (x,y) }
+| x=safe_atom LOR y=safe { Por (x,y) }
+
+(* A safe without a proper inclusion of formula *)
+safe_wf:
+| x=safe_atom_wf { x }
+| x=safe_strong { x }
+| x=safe_atom_wf LAND y=safe { Pand (x,y) }
+| x=safe_atom_wf LOR y=safe { Por (x,y) }
+
+safe_strong:
 | FORALL x=LowerId y=formula_atom ARROW z=safe { Forall (x,y,z) }
 | EXISTS x=LowerId y=formula_atom LAND z=safe { Exists (x,y,z) }
-| x=safe_atom LAND y=safe_atom { Pand (x,y) }
-| x=safe_atom LOR y=safe_atom { Por (x,y) }
 | x=safe_atom y=safe { Apply (x,y) }
 
 safe_atom:
 | x=formula_atom { Leaf x }
-| "(" x=safe ")" { x }
+| "(" x=safe_wf ")" { x }
+| x=LowerId { Var x }
+
+safe_atom_wf:
+| "(" x=safe_wf ")" { x }
 | x=LowerId { Var x }
 
 formula:
