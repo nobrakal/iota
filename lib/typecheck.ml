@@ -9,6 +9,14 @@ type monoty =
   | T of base_ty
   | Arrow of (monoty * monoty)
 
+let rec string_of_monoty = function
+  | V x -> x
+  | T x ->
+     begin match x with
+     | Safet -> "Safe"
+     | Litt -> "Lit" end
+  | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
+
 type scheme = S of string list * monoty
 
 let internal_counter = ref 0
@@ -81,17 +89,21 @@ module Make (Manip : Manip) = struct
 
   type type_error =
     | UnboundVar of Manip.t
-    | WrongType of string
+    | WrongType of monoty * monoty (* actual, expected *)
 
   exception Te of type_error
 
   let string_of_type_error string_of_var = function
-    | UnboundVar t -> "Unbound variable: " ^ (string_of_var t)
-    | WrongType x -> "Type error: " ^ x
+    | UnboundVar t ->
+       "Unbound variable: " ^ (string_of_var t)
+    | WrongType (x,y) ->
+       "Type error:\n"
+       ^ "Expected: " ^ string_of_monoty x ^ "\n"
+       ^ "Actual:   " ^ string_of_monoty y
 
   let unify x y =
     try unify x y with
-    | Exit -> raise (Te (WrongType "unify"))
+    | Exit -> raise (Te (WrongType (x,y)))
 
   let todo _ _ _ = assert false
 
@@ -165,17 +177,18 @@ module Make (Manip : Manip) = struct
       (fun (s2,env) x -> let s1,env = ti_let env x in compose_subst s1 s2, env) (Subst.empty,env) xs
 
   let verify_safe env xs =
+    let safe = T Safet in
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (T Litt)) env) fv env in
-    List.for_all (fun x -> fst (ti_safe env x) = T Safet) xs
+    List.iter (fun x -> let t = fst (ti_safe env x) in if t <> safe then raise (Te (WrongType (t,safe)))) xs
 
   let typecheck_program {vars; safe; _} =
     let env = M.empty in
     let s,env = ti_lets env vars in
     let env = apply_subst_env s env in
-    if verify_safe env safe
-    then None
-    else Some (WrongType "A safe was not safe")
+    try verify_safe env safe; None
+    with
+    | Te x -> Some x
 end

@@ -75,7 +75,11 @@ safe_wf:
 safe_strong:
 | FORALL x=LowerId y=formula_atom ARROW z=safe { Forall (x,y,z) }
 | EXISTS x=LowerId y=formula_atom LAND z=safe { Exists (x,y,z) }
-| x=safe_atom y=safe { Apply (x,y) }
+| x=safe_apply { x }
+
+safe_apply:
+| x=safe_atom y=safe_atom { Apply (x,y) }
+| x=safe_apply y=safe_atom { Apply (x,y) }
 
 safe_atom:
 | x=formula_atom { Leaf x }

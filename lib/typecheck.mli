@@ -11,7 +11,7 @@ module Make(Manip : Manip) : sig
 
   type type_error =
     | UnboundVar of Manip.t
-    | WrongType of string
+    | WrongType of monoty * monoty (* actual, expected *)
 
   val string_of_type_error : (Manip.t -> string) -> type_error -> string
 
