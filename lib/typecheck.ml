@@ -132,6 +132,13 @@ module Make (Manip : Manip) = struct
       | Binop (_,x,y) -> Subst.union todo (aux x) (aux y)
     in aux x
 
+  let try_unify x y =
+    try unify x y
+    with
+      Exit -> raise (Te (WrongType (x, y)))
+
+  let union = Subst.union todo
+
   let ti_safe env x =
     let rec aux env = function
       | Leaf x ->
@@ -148,15 +155,14 @@ module Make (Manip : Manip) = struct
          let nenv = M.add x (scheme_of_mono ty_lit) env in
          let subst = ti_formula nenv u in
          let t,b = aux nenv b in
-         if t = ty_safe
-         then ty_safe,Subst.union todo subst b
-         else raise Exit
+         let s = try_unify t ty_safe in
+         ty_safe,union s (union subst b)
       | Pand (x,y) | Por (x,y) ->
          let t1,x = aux env x in
          let t2,y = aux env y in
-         if t1 = ty_safe && t2 = ty_safe
-         then ty_safe, Subst.union todo x y
-         else raise Exit
+         let s1 = try_unify t1 ty_safe in
+         let s2 = try_unify t2 ty_safe in
+         ty_safe, union s2 (union s1 (union x y))
     in aux env x
 
   let type_of_def env (Def (name,args,body)) =
@@ -186,9 +192,10 @@ module Make (Manip : Manip) = struct
 
   let typecheck_program {vars; safe; _} =
     let env = M.empty in
-    let s,env = ti_lets env vars in
-    let env = apply_subst_env s env in
-    try verify_safe env safe; None
+    try
+      let s,env = ti_lets env vars in
+      let env = apply_subst_env s env in
+      verify_safe env safe; None
     with
     | Te x -> Some x
 end
