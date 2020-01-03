@@ -17,9 +17,26 @@ let join_closure x xs = function
   | Safe body -> Closure (x,xs,body)
   | Closure (y,ys,body) -> Closure (x,xs@(y::ys),body)
 
-(* The program needs to typecheck ! *)
+let var_of_safe = function
+  | Safe (Var x) -> x
+  | _ -> assert false
+
+let replace_vars vars =
+  let replace x =
+    try var_of_safe (List.assoc x vars)
+    with Not_found -> x in
+  let dyn = function
+    | Has x -> Has (replace x)
+    | Link (x,y) -> Link (replace x, replace y)
+    | Other (s,x) -> Other (s, replace x) in
+  let lit = function
+    | Stat (x,i) -> Stat (x, replace i)
+    | Dyn (b,x) -> Dyn (b, dyn x) in
+  fold_formula (fun x -> Lit (lit x)) (fun x y -> Unop (x,y)) (fun x y z -> Binop (x,y,z))
+
+(*  The program needs to typecheck ! *)
 let rec normal_form vars = function
-  | Leaf x -> Safe (Leaf x)
+  | Leaf x -> Safe (Leaf (replace_vars vars x))
   | Var x ->
      begin try List.assoc x vars
      with Not_found -> Safe (Var x) end

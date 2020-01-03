@@ -6,6 +6,6 @@ type 'a final_program =
   ; fmaintain : 'a lit general list }
 
 (** Transform a program that typecheck into a final one *)
-val final_of_program : 'a program -> 'a final_program
+val final_of_program : string program -> string final_program
 
 val print_final : string final_program -> unit
