@@ -24,15 +24,15 @@ let rec normal_form vars = function
      begin try List.assoc x vars
      with Not_found -> Safe (Var x) end
   | Apply (x,y) ->
-     let y = normal_form vars y in
      begin match normal_form vars x with
      | Closure (arg,args,body) ->
+        let y = normal_form vars y in
         let vars = (arg,y)::vars in
         let body = normal_form vars body in
         begin match args with
         | [] -> body
         | x::xs -> join_closure x xs body end
-     | x -> x end
+     | Safe x -> Safe (Apply (x,y)) end
   | Forall (x,f,y) ->
      let vars = List.remove_assoc x vars in
      Safe (Forall (x,f, safe_of_nf (normal_form vars y)))
@@ -53,7 +53,7 @@ let inline_vars_in_vars vars =
     let args' = List.map (fun x -> x,(Safe (Var x))) args in
     let body = normal_form (args'@vars) body in
     let closure =
-      match List.rev args with
+      match args with
       | [] -> body
       | x::xs -> join_closure x xs body in
     (name,closure)::vars
