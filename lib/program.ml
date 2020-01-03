@@ -61,6 +61,78 @@ let string_of_parse_error = function
   | UnboundDynamic s -> "Unbound dynamic: " ^ s
   | UnboundSymbol s -> "Unbound symbol: " ^ s
 
+let print_dynamic s = function
+  | Has x -> Printf.printf "Has(%s)" (s x)
+  | Link (x,y) -> Printf.printf "Link(%s,%s)" (s x) (s y)
+  | Other (x,y) -> Printf.printf "%s(%s)" x (s y)
+
+let print_lit s = function
+  | Dyn (b,x) ->
+     if b
+     then Printf.printf "+";
+     print_dynamic s x
+  | Stat (x,y) -> Printf.printf "%s(%s)" x (s y)
+
+let print_formula lit =
+  let rec aux = function
+    | Lit x -> lit x
+    | Unop (Not,f) ->
+       Printf.printf "not (";
+       aux f;
+       Printf.printf ")"
+    | Binop (u,x,y) ->
+       let s =
+         match u with
+         | And -> "&&"
+         | Or -> "||" in
+       Printf.printf "(";
+       aux x;
+       Printf.printf ") %s (" s;
+       aux y;
+       Printf.printf ")"
+  in aux
+
+let print_safe s p =
+  let rec aux = function
+    | Leaf x ->
+       Printf.printf "{";
+       print_formula s x;
+       Printf.printf "}"
+    | Var x ->
+       Printf.printf "%s" (p x)
+    | Apply (x,y) ->
+       Printf.printf "(";
+       aux x;
+       Printf.printf ") ";
+       Printf.printf "(";
+       aux y;
+       Printf.printf ")"
+    | Forall (x,y,z) ->
+       Printf.printf "forall %s (" (p x);
+       print_formula s y;
+       Printf.printf ") (";
+       aux z;
+       Printf.printf ")"
+    | Exists (x,y,z) ->
+       Printf.printf "exists %s (" (p x);
+       print_formula s y;
+       Printf.printf ") (";
+       aux z;
+       Printf.printf ")"
+    | Pand (x,y) ->
+       Printf.printf "(";
+       aux x;
+       Printf.printf ") && (";
+       aux y;
+       Printf.printf ")"
+    | Por (x,y) ->
+       Printf.printf "(";
+       aux x;
+       Printf.printf ") && (";
+       aux y;
+       Printf.printf ")"
+  in aux
+
 module SString = Set.Make(String)
 
 exception ParseError of parse_error

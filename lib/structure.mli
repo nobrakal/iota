@@ -9,5 +9,5 @@ sig
   val string_of_invalidity : invalidity -> string
 
   (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
-  val validate_program : M.t program -> invalidity option
+  val validate_program : M.t Final.final_program -> invalidity option
 end

@@ -1,4 +1,5 @@
 open Program
+open Final
 
 module Make(Manip : Manip) = struct
 
@@ -68,12 +69,12 @@ module Make(Manip : Manip) = struct
          S.for_all (fun x -> S.mem x fv_guards) (variables_of_formula phi) in
        exists_xvar && fv_phi_incl_fv_guards
 
-  let validate_program {vars; safe; ensure; maintain} =
-    if not (List.for_all verify_guards safe && List.for_all (fun (Def (_,_,b)) -> verify_guards b) vars)
+  let validate_program {fsafe; fensure; fmaintain} =
+    if not (List.for_all verify_guards fsafe)
     then Some (IllFormedGuard)
-    else if not (List.for_all verify_general ensure)
+    else if not (List.for_all verify_general fensure)
     then Some (IllFormedGeneral (Ensure))
-    else if not (List.for_all verify_general maintain)
+    else if not (List.for_all verify_general fmaintain)
     then Some (IllFormedGeneral (Maintain))
     else None
 end

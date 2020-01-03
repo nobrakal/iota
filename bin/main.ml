@@ -4,8 +4,6 @@ module Manip = Program.Manip(String)
 module Structure = Structure.Make(Manip)
 module Typecheck = Typecheck.Make(Manip)
 
-let def_good f x = Option.value (Option.map f x) ~default:"Good"
-
 let main filename =
   let chan = open_in filename in
   let ast = Parser.program Lexer.token (Lexing.from_channel chan) in
@@ -14,7 +12,16 @@ let main filename =
   match Program.program_of_parsed ~static ~dynamic ast with
   | Error s -> print_endline (Program.string_of_parse_error s)
   | Ok ast ->
-     Printf.printf "Structure: %s\n" (def_good Structure.string_of_invalidity (Structure.validate_program ast));
-     Printf.printf "Type: %s\n" (def_good (Typecheck.string_of_type_error (fun x -> x)) (Typecheck.typecheck_program ast))
+     match Typecheck.typecheck_program ast with
+     | Some e ->
+        Printf.printf "Type: %s\n" (Typecheck.string_of_type_error (fun x -> x) e)
+     | None ->
+        let ast = Final.final_of_program ast in
+        match Structure.validate_program ast with
+        | Some e ->
+           Printf.printf "Structure: %s\n" (Structure.string_of_invalidity e)
+        | None ->
+           print_endline "Good";
+           Final.print_final ast
 
 let () = main (Sys.argv.(1))

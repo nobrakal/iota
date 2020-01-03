@@ -18,6 +18,10 @@ type 'a formula =
   | Unop of unop * 'a formula
   | Binop of binop * 'a formula * 'a formula
 
+val print_dynamic : ('a -> string) -> 'a dynamic -> unit
+val print_lit : ('a -> string) -> 'a lit -> unit
+val print_formula : ('a -> unit) -> 'a formula -> unit
+
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Leaf of 'l formula
@@ -43,6 +47,8 @@ type ('a,'l) pre_program =
   ; safe : ('a, 'l) pre_safe list
   ; ensure : 'l general list
   ; maintain : 'l general list }
+
+val print_safe : ('a -> unit) -> ('b -> string) -> ('b,'a) pre_safe -> unit
 
 (** A program which doesn't distinguish static and dynamic predicates *)
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
