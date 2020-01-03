@@ -67,6 +67,12 @@ let final_of_program {vars;safe;ensure;maintain} =
   let fmaintain = maintain in
   {fsafe; fensure; fmaintain}
 
-let print_final {fsafe; _} =
+let print_final {fsafe; fensure; fmaintain} =
+  let print_list f xs =
+    List.iter (fun x -> f x; Printf.printf ";\n") xs in
   let id x = x in
-  List.iter (fun x -> print_safe (print_lit id) id x; Printf.printf ";\n") fsafe
+  print_list (print_safe (print_lit id) id) fsafe;
+  Printf.printf "\nensure\n";
+  print_list (print_general (print_lit id)) fensure;
+    Printf.printf "\nmaintain\n";
+  print_list (print_general (print_lit id)) fmaintain

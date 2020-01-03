@@ -133,6 +133,10 @@ let print_safe s p =
        Printf.printf ")"
   in aux
 
+let print_general p (General (xs,x)) =
+  List.iter (fun x -> print_formula p x; Printf.printf " -> ") xs;
+  print_formula p x
+
 module SString = Set.Make(String)
 
 exception ParseError of parse_error

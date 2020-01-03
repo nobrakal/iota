@@ -105,8 +105,6 @@ module Make (Manip : Manip) = struct
     try unify x y with
     | Exit -> raise (Te (WrongType (x,y)))
 
-  let todo _ _ _ = assert false
-
   let fv_of_env x = M.fold (fun _ x s -> SString.union s (fv_of_scheme x)) x SString.empty
   let apply_subst_env s x = M.map (apply_subst_scheme s) x
 
@@ -123,21 +121,33 @@ module Make (Manip : Manip) = struct
   let ti_lit env x =
     let vars = to_list (variables_of_lit x) in
     let vars = List.map (ti_var env) vars in
-    List.fold_left (fun acc v -> Subst.union todo (unify v ty_lit) acc) Subst.empty vars
+    List.fold_left (fun acc v -> Subst.union left_bias (unify v ty_lit) acc) Subst.empty vars
+
+  let union x y =
+    let x' = Subst.fold (fun x _ y -> SString.add x y) x SString.empty in
+    let y' = Subst.fold (fun x _ y -> SString.add x y) y SString.empty in
+    let inter = SString.inter x' y' in
+    let substs =
+      SString.fold (fun e acc -> (unify (Subst.find e x) (Subst.find e y)) :: acc ) inter [] in
+    let final = compose_subst x y in
+    match substs with
+    | [] -> final
+    | x::xs ->
+       let f = List.fold_left compose_subst x xs in
+       compose_subst final f
 
   let ti_formula env x =
     let rec aux = function
       | Lit x -> ti_lit env x
       | Unop (_,x) -> aux x
-      | Binop (_,x,y) -> Subst.union todo (aux x) (aux y)
+      | Binop (_,x,y) ->
+         union (aux x) (aux y)
     in aux x
 
   let try_unify x y =
     try unify x y
     with
       Exit -> raise (Te (WrongType (x, y)))
-
-  let union = Subst.union todo
 
   let ti_safe env x =
     let rec aux env = function

@@ -38,6 +38,8 @@ type 'a safe = ('a, 'a lit) pre_safe
 type 'l general =
   | General of 'l formula list * 'l formula
 
+val print_general : ('a -> unit) -> 'a general -> unit
+
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
 
