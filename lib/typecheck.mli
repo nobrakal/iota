@@ -7,13 +7,19 @@ type monoty =
   | T of base_ty
   | Arrow of (monoty * monoty)
 
-module Make(Manip : Manip) : sig
+module type Typecheck =
+  sig
 
-  type type_error =
-    | UnboundVar of Manip.t
-    | WrongType of monoty * monoty (* actual, expected *)
+    type t
 
-  val string_of_type_error : (Manip.t -> string) -> type_error -> string
+    type type_error =
+      | UnboundVar of t
+      | WrongType of monoty * monoty (* actual, expected *)
 
-  val typecheck_program : Manip.t program -> type_error option
-end
+    val string_of_type_error : (t -> string) -> type_error -> string
+
+    val typecheck_program : t program -> type_error option
+  end
+
+
+module Make(Manip : Manip) : Typecheck with type t = Manip.t

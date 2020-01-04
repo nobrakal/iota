@@ -84,8 +84,24 @@ let ty_lit = T Litt
 let applys xs fv =
   List.fold_right (fun x acc -> Arrow (x,acc)) xs fv
 
+module type Typecheck =
+  sig
+
+    type t
+
+    type type_error =
+      | UnboundVar of t
+      | WrongType of monoty * monoty (* actual, expected *)
+
+    val string_of_type_error : (t -> string) -> type_error -> string
+
+    val typecheck_program : t program -> type_error option
+  end
+
 module Make (Manip : Manip) = struct
   open Manip
+
+  type t = Manip.t
 
   type type_error =
     | UnboundVar of Manip.t
