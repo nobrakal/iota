@@ -8,6 +8,8 @@
      | x::xs ->
         let ys,e = sept_init_end xs in
         x::ys,e
+
+   let list_of_option x = Option.value ~default:[] x
 %}
 
 (*** TOKENS ***)
@@ -46,9 +48,13 @@
 (*** RULES ***)
 
 program:
-| vars=list(letdef) IN safe=separated_list(SEMICOLON,safe) ensure=option(ensure) maintain=option(maintain) EOF
-  { let ensure = Option.value ~default:[] ensure in
-    let maintain = Option.value ~default:[] maintain in {vars;safe;ensure;maintain} }
+| vars=option(vars) safe=separated_list(SEMICOLON,safe) ensure=option(ensure) maintain=option(maintain) EOF
+  { let vars = list_of_option vars in
+    let ensure = list_of_option ensure in
+    let maintain = list_of_option maintain in {vars;safe;ensure;maintain} }
+
+vars:
+| vars=nonempty_list(letdef) IN { vars }
 
 ensure:
 | ENSURE x=separated_list(SEMICOLON,general) { x }
