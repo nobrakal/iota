@@ -1,0 +1,5 @@
+let f u x = forall z Link(x,z) -> u
+
+in
+
+f (E(x)) x
