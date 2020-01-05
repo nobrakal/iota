@@ -1,0 +1,36 @@
+opam-version: "2.0"
+
+name: "iota"
+version: "0.1"
+
+synopsis: "Iota"
+description:
+"""
+TODO
+"""
+
+maintainer: ["alexandre@moine.me"]
+authors: ["Alexandre Moine"]
+license: "MIT"
+
+homepage: "https://github.com/nobrakal/iota"
+bug-reports: "https://github.com/nobrakal/iota/issues"
+dev-repo: "git+https://github.com/nobrakal/iota.git"
+
+depends: [
+  "ocaml"    {>= "4.05"}
+  "dune"     {build & > "1.5"}
+  "odoc"     {with-doc  & >= "1.2.0"}
+  "alcotest" {with-test & >= "0.8.0"}
+]
+
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "build" "@runtest"] {with-test}
+  ["dune" "build" "@doc"] {with-doc}
+]
+
+run-test: [
+  ["dune" "runtest"]
+]

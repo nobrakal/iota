@@ -1,0 +1,11 @@
+let e x = E(x)
+
+let f h x y = (h x) && (h y)
+
+in
+
++Link(x,y) && (f e x y) ; Link(x,y) && +Active(x)
+
+ensure
+
+Link(z,w) -> (E(w) && Open(z))

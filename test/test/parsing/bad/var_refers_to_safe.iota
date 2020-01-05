@@ -1,0 +1,7 @@
+let e x = E(x)
+
+let f x = not x
+
+in
+
+f e x y
