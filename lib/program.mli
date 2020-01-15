@@ -62,8 +62,6 @@ val fold_formula :
   ('a -> 'b) ->
   (unop -> 'b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
 
-type gen = Ensure | Maintain
-
 type parse_error =
   | UnboundDynamic of string
   | UnboundSymbol of string

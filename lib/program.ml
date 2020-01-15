@@ -51,8 +51,6 @@ let fold_formula l u b =
     | Binop (x,y,z) -> b x (aux y) (aux z)
   in aux
 
-type gen = Ensure | Maintain
-
 type parse_error =
   | UnboundDynamic of string
   | UnboundSymbol of string

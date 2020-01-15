@@ -2,7 +2,7 @@
 
 NB:
  * `{x}` is a list of `x`
- * `{x|c}` is a list of `x` seperated by character `u`
+ * `{x|c}` is a list of `x` seperated by character `c`
 
 ```
 upper_lit ::= (A-Z) [a-Z]*
@@ -42,3 +42,12 @@ general ::=
 program ::=
   | {letdef} IN {safe | ;} ENSURE {general | ;} MAINTAIN {general | ;}
 ```
+
+# How it works ?
+
+The compiler (in `lib/main.ml`) works with the following steps:
+
+1. Parsing
+2. Typechecking
+3. Inlining of all definitions
+4. Verification of the structure

@@ -1,5 +1,7 @@
 open Program
 
+type gen = Ensure | Maintain
+
 module type Structure =
   sig
     type t
