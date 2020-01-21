@@ -51,3 +51,7 @@ The compiler (in `lib/main.ml`) works with the following steps:
 2. Typechecking
 3. Inlining of all definitions
 4. Verification of the structure
+
+# Documentation
+
+Odoc generated documentation is available at: [https://nobrakal.github.io/iota/iota/](https://nobrakal.github.io/iota/iota/).

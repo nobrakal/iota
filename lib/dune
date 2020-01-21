@@ -2,4 +2,5 @@
 (menhir (modules parser) (flags --explain) )
 
 (library
+ (public_name iota)
  (name iota))
