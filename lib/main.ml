@@ -22,13 +22,17 @@ let main ~static ~dynamic chan =
   let ast = Parser.program Lexer.token (Lexing.from_channel chan) in
   let static = Program.SString.of_list static in
   let dynamic = Program.SString.of_list dynamic in
+  (* Transform the parsed AST into a "real one", knowing static and dynamic functions *)
   match Program.program_of_parsed ~static ~dynamic ast with
   | Error e -> Error (Parse e)
   | Ok ast ->
+     (* Typecheck with algorithm W *)
      match Typecheck.typecheck_program ast with
      | Some e -> Error (Type e)
      | None ->
+        (* Inline every possible defintion of a valid program *)
         let ast = Final.final_of_program ast in
+        (* Verify that the structure is valid *)
         match Structure.validate_program ast with
         | Some e -> Error (Structure e)
         | None -> Ok ast
