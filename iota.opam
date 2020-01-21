@@ -19,7 +19,8 @@ dev-repo: "git+https://github.com/nobrakal/iota.git"
 
 depends: [
   "ocaml"    {>= "4.05"}
-  "dune"     {build & > "1.5"}
+  "dune"     {> "1.5"}
+  "menhir"   {> "20180528"}
   "odoc"     {with-doc  & >= "1.2.0"}
   "alcotest" {with-test & >= "0.8.0"}
 ]
@@ -27,10 +28,5 @@ depends: [
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "build" "@runtest"] {with-test}
-  ["dune" "build" "@doc"] {with-doc}
-]
-
-run-test: [
-  ["dune" "runtest"]
+  ["dune" "build" "@doc" "-p" name "-j" jobs] {with-doc}
 ]
