@@ -26,6 +26,7 @@ let replace_vars vars =
     try var_of_safe (List.assoc x vars)
     with Not_found -> x in
   let dyn = function
+    | Parent x -> Parent (replace x)
     | Has x -> Has (replace x)
     | Link (x,y) -> Link (replace x, replace y)
     | Other (s,x) -> Other (s, replace x) in

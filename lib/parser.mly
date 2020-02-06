@@ -21,7 +21,7 @@
 
 (* Logic *)
 %token PLUS LOR LAND
-%token HAS LINK
+%token PARENT HAS LINK
 %token NOT
 %token EQ
 
@@ -111,6 +111,7 @@ lit:
 
 dyn:
 | HAS "(" x=LowerId ")" { Has x }
+| PARENT "(" x=LowerId ")" { Parent x }
 | LINK "(" x=LowerId "," y=LowerId ")" { Link (x,y) }
 | p=UpperId "(" x=LowerId ")" { Other (p,x) }
 

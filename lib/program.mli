@@ -5,6 +5,7 @@ type binop =
   | Or
 
 type 'a dynamic =
+  | Parent of 'a
   | Has of 'a
   | Link of 'a * 'a
   | Other of string * 'a
