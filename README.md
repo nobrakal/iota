@@ -13,6 +13,7 @@ predicate ::=
   | Parent(lower_lit)
   | Link(lower_lit,lower_lit)
   | Has(lower_lit)
+  | Eq(lower_lit,lower_lit)
   | upper_lit (lower_lit)
 
 formula ::=

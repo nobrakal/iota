@@ -49,6 +49,7 @@ rule token = parse
   | "Has"    { HAS }
   | "Link"   { LINK }
   | "Parent" { PARENT }
+  | "Eq"     { EQQ }
 
   | "("      { LPAREN }
   | ")"      { RPAREN }

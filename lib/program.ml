@@ -8,6 +8,7 @@ type 'a dynamic =
   | Parent of 'a
   | Has of 'a
   | Link of 'a * 'a
+  | Eq of 'a *'a
   | Other of string * 'a
 
 type 'a lit =
@@ -64,6 +65,7 @@ let print_dynamic s = function
   | Parent x -> Printf.printf "Parent(%s)" (s x)
   | Has x -> Printf.printf "Has(%s)" (s x)
   | Link (x,y) -> Printf.printf "Link(%s,%s)" (s x) (s y)
+  | Eq (x,y) -> Printf.printf "Eq(%s,%s)" (s x) (s y)
   | Other (x,y) -> Printf.printf "%s(%s)" x (s y)
 
 let print_lit s = function
@@ -144,7 +146,7 @@ exception ParseError of parse_error
 let final_of_formula ~static ~dynamic =
   let mk_lit (b,dyn) =
     match dyn with
-    | Parent _ | Has _ | Link _ -> Dyn (b,dyn)
+    | Eq _ | Parent _ | Has _ | Link _ -> Dyn (b,dyn)
     | Other (s,x) ->
        if SString.mem s dynamic then Dyn (b,dyn)
        else
@@ -206,7 +208,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let variables_of_dynamic = function
     | Parent x | Has x -> S.singleton x
-    | Link (x,y) -> S.of_list [x;y]
+    | Eq (x,y) | Link (x,y) -> S.of_list [x;y]
     | Other (_,x) -> S.singleton x
 
   let variables_of_lit = function

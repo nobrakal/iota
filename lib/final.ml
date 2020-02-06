@@ -29,6 +29,7 @@ let replace_vars vars =
     | Parent x -> Parent (replace x)
     | Has x -> Has (replace x)
     | Link (x,y) -> Link (replace x, replace y)
+    | Eq (x,y) -> Eq (replace x, replace y)
     | Other (s,x) -> Other (s, replace x) in
   let lit = function
     | Stat (x,i) -> Stat (x, replace i)

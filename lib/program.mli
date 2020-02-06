@@ -8,6 +8,7 @@ type 'a dynamic =
   | Parent of 'a
   | Has of 'a
   | Link of 'a * 'a
+  | Eq of 'a *'a
   | Other of string * 'a
 
 type 'a lit =
