@@ -9,12 +9,15 @@ upper_lit ::= (A-Z) [a-Z]*
 
 lower_lit ::= [a-z] [a-Z]*
 
+term ::=
+  | lower_lit
+  | Parent (lower_lit)
+
 predicate ::=
-  | Parent(lower_lit)
-  | Link(lower_lit,lower_lit)
-  | Has(lower_lit)
-  | Eq(lower_lit,lower_lit)
-  | upper_lit (lower_lit)
+  | Link(term,term)
+  | Has(term)
+  | Eq(term,term)
+  | upper_lit (term)
 
 formula ::=
   | predicate

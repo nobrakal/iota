@@ -4,16 +4,19 @@ type binop =
   | And
   | Or
 
+type 'a var =
+  | V of 'a
+  | Parent of 'a var
+
 type 'a dynamic =
-  | Parent of 'a
-  | Has of 'a
-  | Link of 'a * 'a
-  | Eq of 'a *'a
-  | Other of string * 'a
+  | Has of 'a var
+  | Link of 'a var * 'a var
+  | Eq of 'a var * 'a var
+  | Other of string * 'a var
 
 type 'a lit =
   | Dyn of bool * 'a dynamic
-  | Stat of string * 'a
+  | Stat of string * 'a var
 
 type 'a formula =
   | Lit of 'a
@@ -46,6 +49,17 @@ type ('a,'l) pre_program =
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
 type 'a program = ('a, 'a lit) pre_program
 
+let map_var f x =
+  let rec aux = function
+    | V x -> V (f x)
+    | Parent x -> Parent (aux x)
+  in aux x
+
+let rec extract_var x =
+  match x with
+  | V x -> x
+  | Parent x -> extract_var x
+
 let fold_formula l u b =
   let rec aux = function
     | Lit x -> l x
@@ -61,8 +75,14 @@ let string_of_parse_error = function
   | UnboundDynamic s -> "Unbound dynamic: " ^ s
   | UnboundSymbol s -> "Unbound symbol: " ^ s
 
-let print_dynamic s = function
-  | Parent x -> Printf.printf "Parent(%s)" (s x)
+let string_of_var s =
+  let rec aux = function
+  | V x -> s x
+  | Parent x ->  "Parent(" ^ aux x ^ ")"
+  in aux
+
+let print_dynamic s =
+  let s = string_of_var s in function
   | Has x -> Printf.printf "Has(%s)" (s x)
   | Link (x,y) -> Printf.printf "Link(%s,%s)" (s x) (s y)
   | Eq (x,y) -> Printf.printf "Eq(%s,%s)" (s x) (s y)
@@ -73,7 +93,7 @@ let print_lit s = function
      if b
      then Printf.printf "+";
      print_dynamic s x
-  | Stat (x,y) -> Printf.printf "%s(%s)" x (s y)
+  | Stat (x,y) -> Printf.printf "%s(%s)" x (string_of_var s y)
 
 let print_formula lit =
   let rec aux = function
@@ -146,7 +166,7 @@ exception ParseError of parse_error
 let final_of_formula ~static ~dynamic =
   let mk_lit (b,dyn) =
     match dyn with
-    | Eq _ | Parent _ | Has _ | Link _ -> Dyn (b,dyn)
+    | Eq _ | Has _ | Link _ -> Dyn (b,dyn)
     | Other (s,x) ->
        if SString.mem s dynamic then Dyn (b,dyn)
        else
@@ -207,13 +227,13 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   let to_list s = S.fold (fun x y -> x::y) s []
 
   let variables_of_dynamic = function
-    | Parent x | Has x -> S.singleton x
-    | Eq (x,y) | Link (x,y) -> S.of_list [x;y]
-    | Other (_,x) -> S.singleton x
+    | Has x -> S.singleton (extract_var x)
+    | Eq (x,y) | Link (x,y) -> S.of_list [extract_var x;extract_var y]
+    | Other (_,x) -> S.singleton (extract_var x)
 
   let variables_of_lit = function
     | Dyn (_,x) -> variables_of_dynamic x
-    | Stat (_,x) -> S.singleton x
+    | Stat (_,x) -> S.singleton (extract_var x)
 
   let variables_of_formula =
     fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)

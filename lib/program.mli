@@ -4,21 +4,27 @@ type binop =
   | And
   | Or
 
+type 'a var =
+  | V of 'a
+  | Parent of 'a var
+
 type 'a dynamic =
-  | Parent of 'a
-  | Has of 'a
-  | Link of 'a * 'a
-  | Eq of 'a *'a
-  | Other of string * 'a
+  | Has of 'a var
+  | Link of 'a var * 'a var
+  | Eq of 'a var * 'a var
+  | Other of string * 'a var
 
 type 'a lit =
   | Dyn of bool * 'a dynamic
-  | Stat of string * 'a
+  | Stat of string * 'a var
 
 type 'a formula =
   | Lit of 'a
   | Unop of unop * 'a formula
   | Binop of binop * 'a formula * 'a formula
+
+val map_var : ('a -> 'b) -> 'a var -> 'b var
+val extract_var : 'a var -> 'a
 
 val print_dynamic : ('a -> string) -> 'a dynamic -> unit
 val print_lit : ('a -> string) -> 'a lit -> unit

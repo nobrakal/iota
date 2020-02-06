@@ -23,10 +23,9 @@ let var_of_safe = function
 
 let replace_vars vars =
   let replace x =
-    try var_of_safe (List.assoc x vars)
+    try map_var (fun x -> var_of_safe (List.assoc x vars)) x
     with Not_found -> x in
   let dyn = function
-    | Parent x -> Parent (replace x)
     | Has x -> Has (replace x)
     | Link (x,y) -> Link (replace x, replace y)
     | Eq (x,y) -> Eq (replace x, replace y)

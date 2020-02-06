@@ -110,11 +110,14 @@ lit:
 | p=option(PLUS) x=dyn { (Option.is_some p,x) }
 
 dyn:
-| HAS "(" x=LowerId ")" { Has x }
-| EQQ "(" x=LowerId "," y=LowerId ")"{ Eq(x,y) }
-| PARENT "(" x=LowerId ")" { Parent x }
-| LINK "(" x=LowerId "," y=LowerId ")" { Link (x,y) }
-| p=UpperId "(" x=LowerId ")" { Other (p,x) }
+| HAS "(" x=term ")" { Has x }
+| EQQ "(" x=term "," y=term ")"{ Eq(x,y) }
+| LINK "(" x=term "," y=term ")" { Link (x,y) }
+| p=UpperId "(" x=term ")" { Other (p,x) }
+
+term:
+| x=LowerId { V x }
+| PARENT "(" x=term ")" { Parent x }
 
 general:
 | xs=separated_nonempty_list(ARROW,formula) { let xs,x = sept_init_end xs in General (xs,x) }
