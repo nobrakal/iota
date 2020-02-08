@@ -34,6 +34,7 @@ rule token = parse
   | "forall" { FORALL }
   | "exists" { EXISTS }
 
+  | "=>"     { BIGARROW }
   | "->"     { ARROW }
   | "+"      { PLUS }
   | "&&"     { LAND }

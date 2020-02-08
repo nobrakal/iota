@@ -2,8 +2,8 @@ open Program
 
 type 'a final_program =
   { fsafe : ('a, 'a lit) pre_safe list
-  ; fensure : 'a lit general list
-  ; fmaintain : 'a lit general list }
+  ; fensure : ('a, 'a lit) general list
+  ; fmaintain : ('a, 'a lit) general list }
 
 type ('a,'l) nf =
   | Safe of ('a,'l) pre_safe
@@ -27,8 +27,7 @@ let replace_vars vars =
     with Not_found -> x in
   let dyn = function
     | Has x -> Has (replace x)
-    | Link (x,y) -> Link (replace x, replace y)
-    | Eq (x,y) -> Eq (replace x, replace y)
+    | Bin (b,x,y) -> Bin (b,replace x, replace y)
     | Other (s,x) -> Other (s, replace x) in
   let lit = function
     | Stat (x,i) -> Stat (x, replace i)
@@ -91,6 +90,6 @@ let print_final {fsafe; fensure; fmaintain} =
   let id x = x in
   print_list (print_safe (print_lit id) id) fsafe;
   Printf.printf "\nensure\n";
-  print_list (print_general (print_lit id)) fensure;
+  print_list (print_general (print_lit id) id) fensure;
     Printf.printf "\nmaintain\n";
-  print_list (print_general (print_lit id)) fmaintain
+  print_list (print_general (print_lit id) id) fmaintain

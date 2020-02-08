@@ -2,4 +2,4 @@ E(x)
 
 ensure
 
-Link(x,w) -> Link(z,x) -> Link(z,w) -> (E(w) && Open(z))
+Link(x,w) -> Link(z,x) -> Link(z,w) => (E(w) && Open(z))

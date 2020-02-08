@@ -8,4 +8,4 @@ in
 
 ensure
 
-Link(z,w) -> (E(w) && Open(z))
+Link(z,w) => (E(w) && Open(z))

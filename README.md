@@ -13,10 +13,13 @@ term ::=
   | lower_lit
   | Parent (lower_lit)
 
-predicate ::=
+guard ::=
   | Link(term,term)
-  | Has(term)
   | Eq(term,term)
+
+predicate ::=
+  | guard
+  | Has(term)
   | upper_lit (term)
 
 formula ::=
@@ -32,8 +35,8 @@ safe ::=
   | lower_lit
   | safe && safe
   | safe || safe
-  | forall lower_lit formula -> safe
-  | exists lower_lit formula && safe
+  | forall lower_lit guard -> safe
+  | exists lower_lit guard && safe
   | safe safe
   | ( safe )
 
@@ -41,8 +44,8 @@ letdef ::=
   LET lower_lit {lower_lit} = safe
 
 general ::=
-  | formula
-  | formula -> formula
+  | guard -> general
+  | => formula
 
 program ::=
   | {letdef} IN {safe | ;} ENSURE {general | ;} MAINTAIN {general | ;}

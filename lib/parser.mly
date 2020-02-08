@@ -1,14 +1,6 @@
 %{ (* -*- tuareg -*- *)
    open Program
 
-   let rec sept_init_end xs =
-     match xs with
-     | [] -> assert false
-     | [x] -> [],x
-     | x::xs ->
-        let ys,e = sept_init_end xs in
-        x::ys,e
-
    let list_of_option x = Option.value ~default:[] x
 %}
 
@@ -26,6 +18,7 @@
 %token EQ
 
 %token ARROW SEMICOLON ";" COMMA ","
+%token BIGARROW
 
 %token LET
 %token IN
@@ -79,8 +72,8 @@ safe_wf:
 | x=safe_atom_wf LOR y=safe { Por (x,y) }
 
 safe_strong:
-| FORALL x=LowerId y=formula_atom ARROW z=safe { Forall (x,y,z) }
-| EXISTS x=LowerId y=formula_atom LAND z=safe { Exists (x,y,z) }
+| FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }
+| EXISTS x=LowerId y=guard LAND z=safe { Exists (x,y,z) }
 | x=safe_apply { x }
 
 safe_apply:
@@ -111,13 +104,16 @@ lit:
 
 dyn:
 | HAS "(" x=term ")" { Has x }
-| EQQ "(" x=term "," y=term ")"{ Eq(x,y) }
-| LINK "(" x=term "," y=term ")" { Link (x,y) }
+| g=guard { Bin g }
 | p=UpperId "(" x=term ")" { Other (p,x) }
+
+guard:
+| EQQ "(" x=term "," y=term ")"{ (Eq,x,y) }
+| LINK "(" x=term "," y=term ")" { (Link,x,y) }
 
 term:
 | x=LowerId { V x }
 | PARENT "(" x=term ")" { Parent x }
 
 general:
-| xs=separated_nonempty_list(ARROW,formula) { let xs,x = sept_init_end xs in General (xs,x) }
+| xs=separated_list(ARROW,guard) BIGARROW x=formula { General (xs,x) }

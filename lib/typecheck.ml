@@ -179,7 +179,7 @@ module Make (Manip : Manip) = struct
          apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
       | Exists (x,u,b) | Forall (x,u,b) ->
          let nenv = M.add x (scheme_of_mono ty_lit) env in
-         let subst = ti_formula nenv u in
+         let subst = ti_lit nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
          let s = try_unify t ty_safe in
          ty_safe,union s (union subst b)

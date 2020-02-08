@@ -4,14 +4,19 @@ type binop =
   | And
   | Or
 
+type binpred =
+  | Eq
+  | Link
+
 type 'a var =
   | V of 'a
   | Parent of 'a var
 
+type 'a guard = binpred * 'a var * 'a var
+
 type 'a dynamic =
   | Has of 'a var
-  | Link of 'a var * 'a var
-  | Eq of 'a var * 'a var
+  | Bin of 'a guard
   | Other of string * 'a var
 
 type 'a lit =
@@ -27,15 +32,15 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a  * 'l formula * ('a,'l) pre_safe
-  | Exists of 'a * 'l formula * ('a,'l) pre_safe
+  | Forall of 'a * 'a guard * ('a,'l) pre_safe
+  | Exists of 'a * 'a guard * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
 
 type 'a safe = ('a, 'a lit) pre_safe
 
-type 'l general =
-  | General of 'l formula list * 'l formula
+type ('a,'l) general =
+  | General of 'a guard list * 'l formula
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
@@ -43,8 +48,8 @@ type ('a,'l) def =
 type ('a,'l) pre_program =
   { vars : ('a,'l) def list
   ; safe : ('a, 'l) pre_safe list
-  ; ensure : 'l general list
-  ; maintain : 'l general list }
+  ; ensure : ('a, 'l) general list
+  ; maintain : ('a, 'l) general list }
 
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
 type 'a program = ('a, 'a lit) pre_program
@@ -81,12 +86,18 @@ let string_of_var s =
   | Parent x ->  "Parent(" ^ aux x ^ ")"
   in aux
 
+let print_guard s (b,x,y) =
+  let s = string_of_var s in
+  let b = match b with
+    | Link -> "Link"
+    | Eq -> "Eq" in
+  Printf.printf "%s(%s,%s)" b (s x) (s y)
+
 let print_dynamic s =
-  let s = string_of_var s in function
-  | Has x -> Printf.printf "Has(%s)" (s x)
-  | Link (x,y) -> Printf.printf "Link(%s,%s)" (s x) (s y)
-  | Eq (x,y) -> Printf.printf "Eq(%s,%s)" (s x) (s y)
-  | Other (x,y) -> Printf.printf "%s(%s)" x (s y)
+  let s' = string_of_var s in function
+  | Has x -> Printf.printf "Has(%s)" (s' x)
+  | Other (x,y) -> Printf.printf "%s(%s)" x (s' y)
+  | Bin t -> print_guard s t
 
 let print_lit s = function
   | Dyn (b,x) ->
@@ -131,13 +142,13 @@ let print_safe s p =
        Printf.printf ")"
     | Forall (x,y,z) ->
        Printf.printf "forall %s (" (p x);
-       print_formula s y;
+       print_guard p y;
        Printf.printf ") (";
        aux z;
        Printf.printf ")"
     | Exists (x,y,z) ->
        Printf.printf "exists %s (" (p x);
-       print_formula s y;
+       print_guard p y;
        Printf.printf ") (";
        aux z;
        Printf.printf ")"
@@ -155,9 +166,9 @@ let print_safe s p =
        Printf.printf ")"
   in aux
 
-let print_general p (General (xs,x)) =
-  List.iter (fun x -> print_formula p x; Printf.printf " -> ") xs;
-  print_formula p x
+let print_general s p (General (xs,x)) =
+  List.iter (fun x -> print_guard p x; Printf.printf " -> ") xs;
+  print_formula s x
 
 module SString = Set.Make(String)
 
@@ -166,7 +177,7 @@ exception ParseError of parse_error
 let final_of_formula ~static ~dynamic =
   let mk_lit (b,dyn) =
     match dyn with
-    | Eq _ | Has _ | Link _ -> Dyn (b,dyn)
+    | Has _ | Bin _ -> Dyn (b,dyn)
     | Other (s,x) ->
        if SString.mem s dynamic then Dyn (b,dyn)
        else
@@ -184,8 +195,8 @@ let safe_of_parsed ~static ~dynamic =
     | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
     | Var x -> Var x
     | Apply (x,y) -> Apply (aux x, aux y)
-    | Forall (a,l,x) -> Forall (a, final_of_formula ~static ~dynamic l, aux x)
-    | Exists (a,l,x) -> Exists (a, final_of_formula ~static ~dynamic l, aux x)
+    | Forall (a,l,x) -> Forall (a, l, aux x)
+    | Exists (a,l,x) -> Exists (a, l, aux x)
     | Pand (x,y) -> Pand (aux x, aux y)
     | Por (x,y) -> Por (aux x, aux y)
   in aux
@@ -193,7 +204,7 @@ let safe_of_parsed ~static ~dynamic =
 let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
   try
     let general (General (xs,x)) =
-      General ((List.map (final_of_formula ~static ~dynamic) xs),(final_of_formula ~static ~dynamic x)) in
+      General (xs,(final_of_formula ~static ~dynamic x)) in
     let vars =
       List.map
         (fun (Def (name,args,x)) -> Def (name, args, safe_of_parsed ~static ~dynamic x)) vars in
@@ -216,8 +227,6 @@ module type Manip =
     val variables_of_lit : S.elt lit -> S.t
     val variables_of_formula : S.elt lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
-
-    val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
   end
 
 module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
@@ -228,7 +237,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let variables_of_dynamic = function
     | Has x -> S.singleton (extract_var x)
-    | Eq (x,y) | Link (x,y) -> S.of_list [extract_var x;extract_var y]
+    | Bin (_,x,y) -> S.of_list [extract_var x;extract_var y]
     | Other (_,x) -> S.singleton (extract_var x)
 
   let variables_of_lit = function
@@ -238,15 +247,12 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   let variables_of_formula =
     fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
 
+  let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
+
   let rec variables_of_safe = function
     | Leaf f -> variables_of_formula f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_formula f) (variables_of_safe x)
+    | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
     | Pand (x,y) | Por (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-
-  let extract_guard phi =
-    match to_list (variables_of_formula phi) with
-    | [x;y] -> Some (x,y)
-    | _ -> None
 end

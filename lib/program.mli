@@ -4,14 +4,19 @@ type binop =
   | And
   | Or
 
+type binpred =
+  | Eq
+  | Link
+
 type 'a var =
   | V of 'a
   | Parent of 'a var
 
+type 'a guard = binpred * 'a var * 'a var
+
 type 'a dynamic =
   | Has of 'a var
-  | Link of 'a var * 'a var
-  | Eq of 'a var * 'a var
+  | Bin of 'a guard
   | Other of string * 'a var
 
 type 'a lit =
@@ -35,18 +40,18 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a  * 'l formula * ('a,'l) pre_safe
-  | Exists of 'a * 'l formula * ('a,'l) pre_safe
+  | Forall of 'a * 'a guard * ('a,'l) pre_safe
+  | Exists of 'a * 'a guard * ('a,'l) pre_safe
   | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, 'a lit) pre_safe
 
-type 'l general =
-  | General of 'l formula list * 'l formula
+type ('a,'l) general =
+  | General of 'a guard list * 'l formula
 
-val print_general : ('a -> unit) -> 'a general -> unit
+val print_general : ('a -> unit) -> ('b -> string) -> ('b, 'a) general -> unit
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
@@ -55,8 +60,8 @@ type ('a,'l) def =
 type ('a,'l) pre_program =
   { vars : ('a,'l) def list
   ; safe : ('a, 'l) pre_safe list
-  ; ensure : 'l general list
-  ; maintain : 'l general list }
+  ; ensure : ('a,'l) general list
+  ; maintain : ('a,'l) general list }
 
 val print_safe : ('a -> unit) -> ('b -> string) -> ('b,'a) pre_safe -> unit
 
@@ -95,7 +100,6 @@ module type Manip =
     val variables_of_lit : S.elt lit -> S.t
     val variables_of_formula : S.elt lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
-    val extract_guard : S.elt lit formula -> (S.elt * S.elt) option
   end
 
 module Manip(V : Set.OrderedType) : Manip with type t = V.t
