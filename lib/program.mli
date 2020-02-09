@@ -1,12 +1,8 @@
 type unop = Not
 
-type binop =
-  | And
-  | Or
+type binop = And | Or
 
-type binpred =
-  | Eq
-  | Link
+type binpred = Eq | Link
 
 type 'a var =
   | V of 'a
@@ -42,8 +38,7 @@ type ('a,'l) pre_safe =
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a * 'a guard * ('a,'l) pre_safe
   | Exists of 'a * 'a guard * ('a,'l) pre_safe
-  | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
+  | Pbin of binop * ('a,'l) pre_safe * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, 'a lit) pre_safe

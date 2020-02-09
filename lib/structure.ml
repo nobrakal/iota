@@ -41,7 +41,7 @@ module Make(Manip : Manip) = struct
        true
     | Forall (x,(_,a,b),phi) | Exists (x,(_,a,b),phi) ->
        (a <> b) && (x = extract_var a || x = extract_var b) && verify_guards phi
-    | Pand (x,y) | Por (x,y) | Apply (x,y)  ->
+    | Pbin (_,x,y) | Apply (x,y)  ->
        verify_guards x && verify_guards y
 
   let extract_xvar_candidates_of x xs =

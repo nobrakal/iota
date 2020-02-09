@@ -1,12 +1,8 @@
 type unop = Not
 
-type binop =
-  | And
-  | Or
+type binop = And | Or
 
-type binpred =
-  | Eq
-  | Link
+type binpred = Eq | Link
 
 type 'a var =
   | V of 'a
@@ -34,8 +30,7 @@ type ('a,'l) pre_safe =
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a * 'a guard * ('a,'l) pre_safe
   | Exists of 'a * 'a guard * ('a,'l) pre_safe
-  | Pand of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Por of ('a,'l) pre_safe * ('a,'l) pre_safe
+  | Pbin of binop * ('a,'l) pre_safe * ('a,'l) pre_safe
 
 type 'a safe = ('a, 'a lit) pre_safe
 
@@ -106,6 +101,10 @@ let print_lit s = function
      print_dynamic s x
   | Stat (x,y) -> Printf.printf "%s(%s)" x (string_of_var s y)
 
+let string_of_binop = function
+  | And -> "&&"
+  | Or -> "||"
+
 let print_formula lit =
   let rec aux = function
     | Lit x -> lit x
@@ -114,13 +113,9 @@ let print_formula lit =
        aux f;
        Printf.printf ")"
     | Binop (u,x,y) ->
-       let s =
-         match u with
-         | And -> "&&"
-         | Or -> "||" in
        Printf.printf "(";
        aux x;
-       Printf.printf ") %s (" s;
+       Printf.printf ") %s (" (string_of_binop u);
        aux y;
        Printf.printf ")"
   in aux
@@ -152,16 +147,10 @@ let print_safe s p =
        Printf.printf ") (";
        aux z;
        Printf.printf ")"
-    | Pand (x,y) ->
+    | Pbin (b,x,y) ->
        Printf.printf "(";
        aux x;
-       Printf.printf ") && (";
-       aux y;
-       Printf.printf ")"
-    | Por (x,y) ->
-       Printf.printf "(";
-       aux x;
-       Printf.printf ") && (";
+       Printf.printf ") %s (" (string_of_binop b);
        aux y;
        Printf.printf ")"
   in aux
@@ -197,8 +186,7 @@ let safe_of_parsed ~static ~dynamic =
     | Apply (x,y) -> Apply (aux x, aux y)
     | Forall (a,l,x) -> Forall (a, l, aux x)
     | Exists (a,l,x) -> Exists (a, l, aux x)
-    | Pand (x,y) -> Pand (aux x, aux y)
-    | Por (x,y) -> Por (aux x, aux y)
+    | Pbin (b,x,y) -> Pbin (b, aux x, aux y)
   in aux
 
 let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
@@ -254,5 +242,5 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
-    | Pand (x,y) | Por (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
+    | Pbin (_,x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
 end

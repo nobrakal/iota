@@ -61,15 +61,15 @@ letdef:
 safe:
 | x=safe_atom { x }
 | x=safe_strong { x }
-| x=safe_atom LAND y=safe { Pand (x,y) }
-| x=safe_atom LOR y=safe { Por (x,y) }
+| x=safe_atom LAND y=safe { Pbin (And,x,y) }
+| x=safe_atom LOR y=safe { Pbin (Or,x,y) }
 
 (* A safe without a proper inclusion of formula *)
 safe_wf:
 | x=safe_atom_wf { x }
 | x=safe_strong { x }
-| x=safe_atom_wf LAND y=safe { Pand (x,y) }
-| x=safe_atom_wf LOR y=safe { Por (x,y) }
+| x=safe_atom_wf LAND y=safe { Pbin (And,x,y) }
+| x=safe_atom_wf LOR y=safe { Pbin (Or,x,y) }
 
 safe_strong:
 | FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }

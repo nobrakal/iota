@@ -183,7 +183,7 @@ module Make (Manip : Manip) = struct
          let t,b = aux nenv b in
          let s = try_unify t ty_safe in
          ty_safe,union s (union subst b)
-      | Pand (x,y) | Por (x,y) ->
+      | Pbin (_,x,y) ->
          let t1,x = aux env x in
          let t2,y = aux env y in
          let s1 = try_unify t1 ty_safe in

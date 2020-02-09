@@ -56,14 +56,10 @@ let rec normal_form vars = function
   | Exists (x,f,y) ->
      let vars = List.remove_assoc x vars in
      Safe (Exists (x,f, safe_of_nf (normal_form vars y)))
-  | Pand (x,y) ->
+  | Pbin (b,x,y) ->
      let x = safe_of_nf (normal_form vars x) in
      let y = safe_of_nf (normal_form vars y) in
-     Safe (Pand (x,y))
-  | Por (x,y) ->
-     let x = safe_of_nf (normal_form vars x) in
-     let y = safe_of_nf (normal_form vars y) in
-     Safe (Por (x,y))
+     Safe (Pbin (b,x,y))
 
 let inline_vars_in_vars vars =
   let aux vars (Def (name,args,body)) =
