@@ -27,9 +27,13 @@ type 'a formula =
 val map_var : ('a -> 'b) -> 'a var -> 'b var
 val extract_var : 'a var -> 'a
 
-val print_dynamic : ('a -> string) -> 'a dynamic -> unit
-val print_lit : ('a -> string) -> 'a lit -> unit
-val print_formula : ('a -> unit) -> 'a formula -> unit
+val string_of_var : ('a -> string) -> 'a var -> string
+val string_of_guard : ('a -> string) -> binpred * 'a var * 'a var -> string
+val string_of_dynamic : ('a -> string) -> 'a dynamic -> string
+val string_of_lit : ('a -> string) -> 'a lit -> string
+val string_of_binop : binop -> string
+val string_of_formula : ('a -> string) -> 'a formula -> string
+val print_formula : ('a -> string) -> 'a formula -> unit
 
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
@@ -43,10 +47,18 @@ type ('a,'l) pre_safe =
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, 'a lit) pre_safe
 
+val string_of_safe :
+  ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> string
+val print_safe :
+  ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> unit
+
 type ('a,'l) general =
   | General of 'a guard list * 'l formula
 
-val print_general : ('a -> unit) -> ('b -> string) -> ('b, 'a) general -> unit
+val string_of_general :
+  ('a -> string) -> ('b -> string) -> ('b, 'a) general -> string
+val print_general :
+  ('a -> string) -> ('b -> string) -> ('b, 'a) general -> unit
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
@@ -57,8 +69,6 @@ type ('a,'l) pre_program =
   ; safe : ('a, 'l) pre_safe list
   ; ensure : ('a,'l) general list
   ; maintain : ('a,'l) general list }
-
-val print_safe : ('a -> unit) -> ('b -> string) -> ('b,'a) pre_safe -> unit
 
 (** A program which doesn't distinguish static and dynamic predicates *)
 type 'a parsed_program = ('a, bool * 'a dynamic) pre_program

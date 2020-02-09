@@ -75,89 +75,73 @@ let string_of_parse_error = function
   | UnboundDynamic s -> "Unbound dynamic: " ^ s
   | UnboundSymbol s -> "Unbound symbol: " ^ s
 
+let paren s = "(" ^ s ^ ")"
+let space s = " " ^ s ^ " "
+
 let string_of_var s =
   let rec aux = function
   | V x -> s x
-  | Parent x ->  "Parent(" ^ aux x ^ ")"
+  | Parent x ->  "Parent" ^ paren (aux x)
   in aux
 
-let print_guard s (b,x,y) =
+let string_of_guard s (b,x,y) =
   let s = string_of_var s in
   let b = match b with
     | Link -> "Link"
     | Eq -> "Eq" in
-  Printf.printf "%s(%s,%s)" b (s x) (s y)
+  b ^ paren ((s x) ^ "," ^ (s y))
 
-let print_dynamic s =
+let string_of_dynamic s =
   let s' = string_of_var s in function
-  | Has x -> Printf.printf "Has(%s)" (s' x)
-  | Other (x,y) -> Printf.printf "%s(%s)" x (s' y)
-  | Bin t -> print_guard s t
+  | Has x -> "Has" ^ paren (s' x)
+  | Other (x,y) -> x ^ paren (s' y)
+  | Bin t -> string_of_guard s t
 
-let print_lit s = function
+let string_of_lit s = function
   | Dyn (b,x) ->
-     if b
-     then Printf.printf "+";
-     print_dynamic s x
-  | Stat (x,y) -> Printf.printf "%s(%s)" x (string_of_var s y)
+     let pref = if b then "+" else "" in
+     pref ^ string_of_dynamic s x
+  | Stat (x,y) -> x ^ paren (string_of_var s y)
 
 let string_of_binop = function
   | And -> "&&"
   | Or -> "||"
 
-let print_formula lit =
+let string_of_formula lit =
   let rec aux = function
     | Lit x -> lit x
     | Unop (Not,f) ->
-       Printf.printf "not (";
-       aux f;
-       Printf.printf ")"
+       "not" ^ paren (aux f)
     | Binop (u,x,y) ->
-       Printf.printf "(";
-       aux x;
-       Printf.printf ") %s (" (string_of_binop u);
-       aux y;
-       Printf.printf ")"
+       paren (aux x) ^ space (string_of_binop u) ^ paren (aux y)
   in aux
 
-let print_safe s p =
+let print_formula lit x = print_endline (string_of_formula lit x)
+
+let string_of_safe s p x =
   let rec aux = function
-    | Leaf x ->
-       Printf.printf "{";
-       print_formula s x;
-       Printf.printf "}"
-    | Var x ->
-       Printf.printf "%s" (p x)
+    | Leaf x -> "{" ^ s x ^ "}"
+    | Var x -> p x
     | Apply (x,y) ->
-       Printf.printf "(";
-       aux x;
-       Printf.printf ") ";
-       Printf.printf "(";
-       aux y;
-       Printf.printf ")"
+       paren (aux x) ^ paren (aux y)
     | Forall (x,y,z) ->
-       Printf.printf "forall %s (" (p x);
-       print_guard p y;
-       Printf.printf ") (";
-       aux z;
-       Printf.printf ")"
+       "forall " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
     | Exists (x,y,z) ->
-       Printf.printf "exists %s (" (p x);
-       print_guard p y;
-       Printf.printf ") (";
-       aux z;
-       Printf.printf ")"
+       "exists " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
     | Pbin (b,x,y) ->
-       Printf.printf "(";
-       aux x;
-       Printf.printf ") %s (" (string_of_binop b);
-       aux y;
-       Printf.printf ")"
-  in aux
+       paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
+  in aux x
 
-let print_general s p (General (xs,x)) =
-  List.iter (fun x -> print_guard p x; Printf.printf " -> ") xs;
-  print_formula s x
+let print_safe s p x = print_endline (string_of_safe s p x)
+
+let string_of_general s p (General (xs,x)) =
+  let str =
+    match xs with
+    | [] -> ""
+    | x::xs -> List.fold_left (fun acc x -> acc ^ "->" ^ string_of_guard p x) (string_of_guard p x) xs in
+  str ^ space "=>" ^ string_of_formula s x
+
+let print_general s p x = print_endline (string_of_general s p x)
 
 module SString = Set.Make(String)
 
