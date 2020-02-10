@@ -32,7 +32,7 @@ let replace_vars vars =
   let lit = function
     | Stat (x,i) -> Stat (x, replace i)
     | Dyn (b,x) -> Dyn (b, dyn x) in
-  fold_formula (fun x -> Lit (lit x)) (fun x y -> Unop (x,y)) (fun x y z -> Binop (x,y,z))
+  fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun x y z -> Binop (x,y,z))
 
 (*  The program needs to typecheck ! *)
 let rec normal_form vars = function
@@ -56,10 +56,11 @@ let rec normal_form vars = function
   | Exists (x,f,y) ->
      let vars = List.remove_assoc x vars in
      Safe (Exists (x,f, safe_of_nf (normal_form vars y)))
-  | Pbin (b,x,y) ->
-     let x = safe_of_nf (normal_form vars x) in
-     let y = safe_of_nf (normal_form vars y) in
-     Safe (Pbin (b,x,y))
+  | Formula f ->
+     Safe (Formula
+             (fold_formula (fun x -> Lit (safe_of_nf (normal_form vars x)))
+             (fun x -> Not x)
+             (fun b x y -> Binop (b,x,y)) f))
 
 let inline_vars_in_vars vars =
   let aux vars (Def (name,args,body)) =

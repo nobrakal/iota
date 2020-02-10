@@ -1,5 +1,3 @@
-type unop = Not
-
 type binop = And | Or
 
 type binpred = Eq | Link
@@ -21,8 +19,20 @@ type 'a lit =
 
 type 'a formula =
   | Lit of 'a
-  | Unop of unop * 'a formula
+  | Not of 'a formula
   | Binop of binop * 'a formula * 'a formula
+
+(** A safe syntax which can be meaningless *)
+and ('a,'l) pre_safe =
+  | Formula of ('a,'l) pre_safe formula
+  | Leaf of 'l formula
+  | Var of 'a
+  | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
+  | Forall of 'a * 'a guard * ('a,'l) pre_safe
+  | Exists of 'a * 'a guard * ('a,'l) pre_safe
+
+(** A safe syntax with some meaning *)
+type 'a safe = ('a, 'a lit) pre_safe
 
 val map_var : ('a -> 'b) -> 'a var -> 'b var
 val extract_var : 'a var -> 'a
@@ -34,18 +44,6 @@ val string_of_lit : ('a -> string) -> 'a lit -> string
 val string_of_binop : binop -> string
 val string_of_formula : ('a -> string) -> 'a formula -> string
 val print_formula : ('a -> string) -> 'a formula -> unit
-
-(** A safe syntax which can be meaningless *)
-type ('a,'l) pre_safe =
-  | Leaf of 'l formula
-  | Var of 'a
-  | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * 'a guard * ('a,'l) pre_safe
-  | Exists of 'a * 'a guard * ('a,'l) pre_safe
-  | Pbin of binop * ('a,'l) pre_safe * ('a,'l) pre_safe
-
-(** A safe syntax with some meaning *)
-type 'a safe = ('a, 'a lit) pre_safe
 
 val string_of_safe :
   ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> string
@@ -78,7 +76,7 @@ type 'a program = ('a, 'a lit) pre_program
 
 val fold_formula :
   ('a -> 'b) ->
-  (unop -> 'b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
+  ('b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
 
 type parse_error =
   | UnboundDynamic of string

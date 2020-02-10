@@ -61,15 +61,15 @@ letdef:
 safe:
 | x=safe_atom { x }
 | x=safe_strong { x }
-| x=safe_atom LAND y=safe { Pbin (And,x,y) }
-| x=safe_atom LOR y=safe { Pbin (Or,x,y) }
+| x=safe_atom LAND y=safe { Formula (Binop (And,Lit x,Lit y)) }
+| x=safe_atom LOR y=safe { Formula (Binop (Or,Lit x,Lit y)) }
 
 (* A safe without a proper inclusion of formula *)
 safe_wf:
 | x=safe_atom_wf { x }
 | x=safe_strong { x }
-| x=safe_atom_wf LAND y=safe { Pbin (And,x,y) }
-| x=safe_atom_wf LOR y=safe { Pbin (Or,x,y) }
+| x=safe_atom_wf LAND y=safe { Formula (Binop (And,Lit x,Lit y)) }
+| x=safe_atom_wf LOR y=safe { Formula (Binop (And,Lit x,Lit y)) }
 
 safe_strong:
 | FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }
@@ -91,7 +91,7 @@ safe_atom_wf:
 
 formula:
 | x=formula_atom { x }
-| NOT x=formula_atom { Unop (Not,x) }
+| NOT x=formula_atom { Not x }
 | x=formula LAND y=formula { Binop (And,x,y) }
 | x=formula LOR y=formula { Binop (Or,x,y) }
 

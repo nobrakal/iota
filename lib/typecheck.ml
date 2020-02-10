@@ -155,7 +155,7 @@ module Make (Manip : Manip) = struct
   let ti_formula env x =
     let rec aux = function
       | Lit x -> ti_lit env x
-      | Unop (_,x) -> aux x
+      | Not x -> aux x
       | Binop (_,x,y) ->
          union (aux x) (aux y)
     in aux x
@@ -183,12 +183,8 @@ module Make (Manip : Manip) = struct
          let t,b = aux nenv b in
          let s = try_unify t ty_safe in
          ty_safe,union s (union subst b)
-      | Pbin (_,x,y) ->
-         let t1,x = aux env x in
-         let t2,y = aux env y in
-         let s1 = try_unify t1 ty_safe in
-         let s2 = try_unify t2 ty_safe in
-         ty_safe, union s2 (union s1 (union x y))
+      | Formula f ->
+         fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> ty_safe, union x y) f
     in aux env x
 
   let type_of_def env (Def (name,args,body)) =

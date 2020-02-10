@@ -36,13 +36,15 @@ module Make(Manip : Manip) = struct
          | Maintain -> "maintain" in
        "Ill-formed "^ s ^" part"
 
-  let rec verify_guards = function
+  let verify_guards x =
+    let rec aux = function
     | Leaf _ | Var _ ->
        true
     | Forall (x,(_,a,b),phi) | Exists (x,(_,a,b),phi) ->
-       (a <> b) && (x = extract_var a || x = extract_var b) && verify_guards phi
-    | Pbin (_,x,y) | Apply (x,y)  ->
-       verify_guards x && verify_guards y
+       (a <> b) && (x = extract_var a || x = extract_var b) && aux phi
+    | Apply (x,y)  -> aux x && aux y
+    | Formula f -> fold_formula aux (fun x -> x) (fun _ -> ( && ) ) f
+    in aux x
 
   let extract_xvar_candidates_of x xs =
     to_list (List.fold_left (fun acc x -> S.inter acc x) x xs)
@@ -55,7 +57,7 @@ module Make(Manip : Manip) = struct
       match acc with
       | Some _ -> acc
       | None ->
-         if fold_formula (lit (S.singleton x)) (fun _ x -> x) (fun _ -> ( && )) phi
+         if fold_formula (lit (S.singleton x)) (fun x -> x) (fun _ -> ( && )) phi
          then Some x
          else None in
     List.fold_left aux None lst

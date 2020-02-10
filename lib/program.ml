@@ -1,5 +1,3 @@
-type unop = Not
-
 type binop = And | Or
 
 type binpred = Eq | Link
@@ -21,16 +19,16 @@ type 'a lit =
 
 type 'a formula =
   | Lit of 'a
-  | Unop of unop * 'a formula
+  | Not of 'a formula
   | Binop of binop * 'a formula * 'a formula
 
-type ('a,'l) pre_safe =
+and ('a,'l) pre_safe =
+  | Formula of ('a,'l) pre_safe formula
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a * 'a guard * ('a,'l) pre_safe
   | Exists of 'a * 'a guard * ('a,'l) pre_safe
-  | Pbin of binop * ('a,'l) pre_safe * ('a,'l) pre_safe
 
 type 'a safe = ('a, 'a lit) pre_safe
 
@@ -63,7 +61,7 @@ let rec extract_var x =
 let fold_formula l u b =
   let rec aux = function
     | Lit x -> l x
-    | Unop (x,y) -> u x (aux y)
+    | Not y -> u (aux y)
     | Binop (x,y,z) -> b x (aux y) (aux z)
   in aux
 
@@ -110,7 +108,7 @@ let string_of_binop = function
 let string_of_formula lit =
   let rec aux = function
     | Lit x -> lit x
-    | Unop (Not,f) ->
+    | Not f ->
        "not" ^ paren (aux f)
     | Binop (u,x,y) ->
        paren (aux x) ^ space (string_of_binop u) ^ paren (aux y)
@@ -128,8 +126,12 @@ let string_of_safe s p x =
        "forall " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
     | Exists (x,y,z) ->
        "exists " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
-    | Pbin (b,x,y) ->
-       paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
+    | Formula f -> auxf f
+  and auxf = function
+    | Lit x -> aux x
+    | Not x -> "not " ^ paren (auxf x)
+    | Binop (b,x,y) ->
+       paren (auxf x) ^ space (string_of_binop b) ^ paren (auxf y)
   in aux x
 
 let print_safe s p x = print_endline (string_of_safe s p x)
@@ -161,7 +163,7 @@ let final_of_formula ~static ~dynamic =
            else raise (ParseError (UnboundSymbol s))
   in
   fold_formula (fun x -> Lit (mk_lit x))
-    (fun u x -> Unop (u,x)) (fun b x y -> Binop (b,x,y))
+    (fun x -> Not x) (fun b x y -> Binop (b,x,y))
 
 let safe_of_parsed ~static ~dynamic =
   let rec aux = function
@@ -170,7 +172,9 @@ let safe_of_parsed ~static ~dynamic =
     | Apply (x,y) -> Apply (aux x, aux y)
     | Forall (a,l,x) -> Forall (a, l, aux x)
     | Exists (a,l,x) -> Exists (a, l, aux x)
-    | Pbin (b,x,y) -> Pbin (b, aux x, aux y)
+    | Formula f ->
+       Formula
+         (fold_formula (fun x -> Lit (aux x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f)
   in aux
 
 let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
@@ -217,7 +221,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Stat (_,x) -> S.singleton (extract_var x)
 
   let variables_of_formula =
-    fold_formula variables_of_lit (fun _ x -> x) (fun _ -> S.union)
+    fold_formula variables_of_lit (fun x -> x) (fun _ -> S.union)
 
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 
@@ -226,5 +230,6 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
-    | Pbin (_,x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
+    | Formula f ->
+       fold_formula variables_of_safe (fun x -> x) (fun _ -> S.union) f
 end
