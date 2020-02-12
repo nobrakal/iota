@@ -59,17 +59,13 @@ letdef:
 | LET x=LowerId xs=list(LowerId) EQ y=safe { Def (x,xs,y) }
 
 safe:
-| x=safe_atom { x }
 | x=safe_strong { x }
-| x=safe_atom LAND y=safe { Formula (Binop (And,Lit x,Lit y)) }
-| x=safe_atom LOR y=safe { Formula (Binop (Or,Lit x,Lit y)) }
+| x=safe_formula { Formula x }
 
 (* A safe without a proper inclusion of formula *)
 safe_wf:
 | x=safe_atom_wf { x }
 | x=safe_strong { x }
-| x=safe_atom_wf LAND y=safe { Formula (Binop (And,Lit x,Lit y)) }
-| x=safe_atom_wf LOR y=safe { Formula (Binop (And,Lit x,Lit y)) }
 
 safe_strong:
 | FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }
@@ -85,15 +81,14 @@ safe_atom:
 | "(" x=safe_wf ")" { x }
 | x=LowerId { Var x }
 
+let safe_formula_lit := x=safe_atom; { Lit x }
+let safe_formula := mk_formula(safe_formula_lit)
+
 safe_atom_wf:
 | "(" x=safe_wf ")" { x }
 | x=LowerId { Var x }
 
-formula:
-| x=formula_atom { x }
-| NOT x=formula_atom { Not x }
-| x=formula LAND y=formula { Binop (And,x,y) }
-| x=formula LOR y=formula { Binop (Or,x,y) }
+let formula := mk_formula(formula_atom)
 
 formula_atom :
 | x=lit { Lit x }
@@ -108,7 +103,7 @@ dyn:
 | p=UpperId "(" x=term ")" { Other (p,x) }
 
 guard:
-| EQQ "(" x=term "," y=term ")"{ (Eq,x,y) }
+| EQQ "(" x=term "," y=term ")" { (Eq,x,y) }
 | LINK "(" x=term "," y=term ")" { (Link,x,y) }
 
 term:
@@ -117,3 +112,9 @@ term:
 
 general:
 | xs=separated_list(ARROW,guard) BIGARROW x=formula { General (xs,x) }
+
+let mk_formula(atom) :=
+  | x=atom; { x }
+  | NOT; x=atom; { Not x }
+  | x=mk_formula(atom); LAND; y=mk_formula(atom); { Binop (And,x,y) }
+  | x=mk_formula(atom); LOR; y=mk_formula(atom); { Binop (Or,x,y) }
