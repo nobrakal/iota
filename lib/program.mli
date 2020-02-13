@@ -23,7 +23,7 @@ type 'a formula =
   | Binop of binop * 'a formula * 'a formula
 
 (** A safe syntax which can be meaningless *)
-and ('a,'l) pre_safe =
+type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
   | Leaf of 'l formula
   | Var of 'a

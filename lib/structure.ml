@@ -38,12 +38,10 @@ module Make(Manip : Manip) = struct
 
   let verify_guards x =
     let rec aux = function
-    | Leaf _ | Var _ ->
-       true
-    | Forall (x,(_,a,b),phi) | Exists (x,(_,a,b),phi) ->
+    | FLeaf _ -> true
+    | FForall (x,(_,a,b),phi) | FExists (x,(_,a,b),phi) ->
        (a <> b) && (x = extract_var a || x = extract_var b) && aux phi
-    | Apply (x,y)  -> aux x && aux y
-    | Formula f -> fold_formula aux (fun x -> x) (fun _ -> ( && ) ) f
+    | FBinop (_,x,y) -> aux x && aux y
     in aux x
 
   let extract_xvar_candidates_of x xs =

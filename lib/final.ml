@@ -1,7 +1,28 @@
 open Program
 
+type ('a,'l) pre_fsafe =
+  | FLeaf of 'l formula
+  | FForall of 'a * 'a guard * ('a,'l) pre_fsafe
+  | FExists of 'a * 'a guard * ('a,'l) pre_fsafe
+  | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
+
+let par x = "(" ^ x ^ ")"
+let space x = " " ^ x ^ " "
+
+let string_of_fsafe f e u =
+  let rec aux = function
+    | FLeaf x -> string_of_formula f x
+    | FForall (a,g,x) ->
+       "forall " ^ e a ^ ". " ^ par (string_of_guard e g) ^ space "->" ^ par (aux x)
+    | FExists (a,g,x) ->
+       "exists " ^ e a ^ ". " ^ par (string_of_guard e g) ^ space "&&" ^ par (aux x)
+    | FBinop (b,x,y) -> par (aux x) ^ space (string_of_binop b) ^ par (aux y)
+  in aux u
+
+let print_fsafe f e x = print_endline (string_of_fsafe f e x)
+
 type 'a final_program =
-  { fsafe : ('a, 'a lit) pre_safe list
+  { fsafe : ('a, 'a lit) pre_fsafe list
   ; fensure : ('a, 'a lit) general list
   ; fmaintain : ('a, 'a lit) general list }
 
@@ -34,6 +55,28 @@ let replace_vars vars =
     | Dyn (b,x) -> Dyn (b, dyn x) in
   fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun x y z -> Binop (x,y,z))
 
+let rec negate x =
+  match x with
+  | FLeaf _ -> x
+  | FForall (x,b,f) -> FExists (x, b, negate f)
+  | FExists (x,b,f) -> FForall (x, b, negate f)
+  | FBinop (b,x,y) ->
+     let b = match b with
+       | And -> Or
+       | Or -> And in
+     FBinop (b, negate x, negate y)
+
+let rec fsafe_of_safe x =
+  match x with
+  | Leaf x -> FLeaf x
+  | Forall (x,g,a) -> FForall (x, g, fsafe_of_safe a)
+  | Exists (x,g,a) -> FExists (x, g, fsafe_of_safe a)
+  | Var _ | Apply _ -> assert false
+  | Formula f ->
+     fold_formula (fun x -> fsafe_of_safe x)
+       (fun x -> negate x)
+       (fun b x y -> FBinop (b,x,y)) f
+
 (*  The program needs to typecheck ! *)
 let rec normal_form vars = function
   | Leaf x -> Safe (Leaf (replace_vars vars x))
@@ -64,7 +107,7 @@ let rec normal_form vars = function
 
 let inline_vars_in_vars vars =
   let aux vars (Def (name,args,body)) =
-    let args' = List.map (fun x -> x,(Safe (Var x))) args in
+    let args' = List.map (fun x -> x,Safe (Var x)) args in
     let body = normal_form (args'@vars) body in
     let closure =
       match args with
@@ -76,7 +119,7 @@ let inline_vars_in_vars vars =
 
 let final_of_program {vars;safe;ensure;maintain} =
   let vars = inline_vars_in_vars vars in
-  let fsafe = List.map (fun x -> safe_of_nf (normal_form vars x)) safe in
+  let fsafe = List.map (fun x -> fsafe_of_safe (safe_of_nf (normal_form vars x))) safe in
   let fensure = ensure in
   let fmaintain = maintain in
   {fsafe; fensure; fmaintain}
@@ -85,7 +128,7 @@ let print_final ({fsafe; fensure; fmaintain} : string final_program) =
   let print_list f xs =
     List.iter (fun x -> f x; Printf.printf ";\n") xs in
   let id x = x in
-  print_list (print_safe (string_of_formula (string_of_lit id)) id) fsafe;
+  print_list (print_fsafe (string_of_lit id) id) fsafe;
   Printf.printf "\nensure\n";
   print_list (print_general (string_of_lit id) id) fensure;
     Printf.printf "\nmaintain\n";
