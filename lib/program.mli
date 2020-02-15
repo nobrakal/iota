@@ -9,6 +9,7 @@ type rbinpred =
 type 'a var =
   | V of 'a
   | Parent of 'a var
+  | Func of string * 'a var
 
 type ('a,'b) guard = 'b * 'a var * 'a var
 

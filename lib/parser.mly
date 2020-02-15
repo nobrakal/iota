@@ -20,6 +20,7 @@
 
 %token ARROW SEMICOLON ";" COMMA ","
 %token BIGARROW
+%token DOT "."
 
 %token LET
 %token IN
@@ -114,6 +115,7 @@ rguard:
 term:
 | x=LowerId { V x }
 | PARENT "(" x=term ")" { Parent x }
+| x=term "." y=LowerId { Func (y,x) }
 
 general:
 | xs=separated_list(ARROW,guard) BIGARROW x=formula { General (xs,x) }

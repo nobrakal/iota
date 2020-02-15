@@ -45,7 +45,9 @@ rule token = parse
   | "in"     { IN }
 
   | "="      { EQ }
-  | "not"    { NOT  }
+  | "not"    { NOT }
+
+  | "."      { DOT }
 
   | "Has"    { HAS }
   | "TLink"  { TLINK }
