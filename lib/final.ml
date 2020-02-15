@@ -118,17 +118,25 @@ let inline_vars_in_vars vars =
   List.fold_left aux [] vars
 
 let dyn = function
-  | Has x -> Has x
-  | Other (s,x) -> Other (s,x)
-  | Bin (B x, a, b) -> Bin (x,a,b)
-  | Bin _ -> assert false
+  | Has x -> Ok (Has x)
+  | Other (s,x) -> Ok (Other (s,x))
+  | Bin (B x, a, b) -> Ok (Bin (x,a,b))
+  | Bin (TLink, a, b) -> Error (a,b)
 
-let lit = function
-    | Stat (s,x) -> Stat (s,x)
-    | Dyn (b,d) -> Dyn (b,dyn d)
+let lit' = function
+    | Stat (s,x) -> Ok (Stat (s,x))
+    | Dyn (b,d) ->
+       match dyn d with
+       | Ok x -> Ok (Dyn (b,x))
+       | Error x -> Error x
+
+let lit x =
+  match lit' x with
+  | Ok x -> Lit x
+  | Error (_) -> assert false
 
 let remove_tlink' f =
-  fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
+  fold_formula lit (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
 let rec remove_tlink x = match x with
   | FLeaf f -> FLeaf (remove_tlink' f)
