@@ -3,6 +3,7 @@ module Structure : Structure.Structure with type t = String.t
 module Typecheck : Typecheck.Typecheck with type t = String.t
 
 type err =
+  | Menhir
   | Type of Typecheck.type_error
   | Parse of Program.parse_error
   | Structure of Structure.invalidity
