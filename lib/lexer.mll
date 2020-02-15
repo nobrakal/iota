@@ -48,6 +48,7 @@ rule token = parse
   | "not"    { NOT  }
 
   | "Has"    { HAS }
+  | "TLink"  { TLINK }
   | "Link"   { LINK }
   | "Parent" { PARENT }
   | "Eq"     { EQQ }

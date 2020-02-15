@@ -14,7 +14,7 @@
 
 (* Logic *)
 %token PLUS LOR LAND
-%token PARENT HAS LINK EQQ
+%token PARENT HAS LINK TLINK EQQ
 %token NOT
 %token EQ
 
@@ -101,11 +101,15 @@ lit:
 dyn:
 | HAS "(" x=term ")" { Has x }
 | g=guard { Bin (lift_t (fun x -> B x) g) }
+| g=rguard { Bin g }
 | p=UpperId "(" x=term ")" { Other (p,x) }
 
 guard:
 | EQQ "(" x=term "," y=term ")" { (Eq,x,y) }
 | LINK "(" x=term "," y=term ")" { (Link,x,y) }
+
+rguard:
+| TLINK "(" x=term "," y=term ")" { (TLink,x,y) }
 
 term:
 | x=LowerId { V x }
