@@ -15,6 +15,9 @@ type 'a final_program =
   ; fmaintain : ('a, ('a, binpred) lit) general list }
 
 (** Transform a program that typecheck into a final one *)
-val final_of_program : string program -> string final_program
+val final_of_program :
+  maxprof:int ->
+  functions:string list ->
+  string Program.program -> string final_program
 
 val print_final : string final_program -> unit

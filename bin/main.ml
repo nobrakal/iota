@@ -2,9 +2,11 @@ open Iota
 
 let main filename =
   let chan = open_in filename in
+  let functions = ["f";"g"] in
+  let maxprof = 3 in
   let static = ["E"] in
   let dynamic = ["Active"; "Open"] in
-  match Main.main ~static ~dynamic chan with
+  match Main.main ~maxprof ~functions ~static ~dynamic chan with
   | Error s ->
      Main.print_err s
   | Ok ast ->

@@ -18,7 +18,7 @@ let print_err x =
        "Structure: " ^ Structure.string_of_invalidity e
   in Printf.eprintf "%s\n" str
 
-let main ~static ~dynamic chan =
+let main ~maxprof ~functions ~static ~dynamic chan =
   let ast = Parser.program Lexer.token (Lexing.from_channel chan) in
   let static = Program.SString.of_list static in
   let dynamic = Program.SString.of_list dynamic in
@@ -31,7 +31,7 @@ let main ~static ~dynamic chan =
      | Some e -> Error (Type e)
      | None ->
         (* Inline every possible defintion of a valid program *)
-        let ast = Final.final_of_program ast in
+        let ast = Final.final_of_program ~maxprof ~functions ast in
         (* Verify that the structure is valid *)
         match Structure.validate_program ast with
         | Some e -> Error (Structure e)

@@ -10,4 +10,8 @@ type err =
 val print_err : err -> unit
 
 val main :
-  static:(string list) -> dynamic:(string list) -> in_channel -> (string Final.final_program, err) result
+  maxprof:int ->
+  functions:string list ->
+  static:string list ->
+  dynamic:string list ->
+  in_channel -> (string Final.final_program, err) result

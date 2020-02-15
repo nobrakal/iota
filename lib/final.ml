@@ -128,29 +128,50 @@ let lit' = function
     | Dyn (b,d) ->
        match dyn d with
        | Ok x -> Ok (Dyn (b,x))
-       | Error x -> Error x
+       | Error x -> Error (b,x)
 
-let lit x =
+let bind x f = List.(fold_left rev_append [] (rev_map f x))
+
+let rec iter_bind n x f =
+  if n = 0
+  then x
+  else iter_bind (n-1) (bind x f) f
+
+let lit ~maxprof ~functions x =
   match lit' x with
   | Ok x -> Lit x
-  | Error (_) -> assert false
+  | Error (b, (x,y)) ->
+     let link x y = Lit (Dyn (b,(Bin (Link, x, y)))) in
+     let paths x = iter_bind maxprof [x] (fun x -> List.map (fun f -> Func (f,x)) functions) in
+     match paths x, paths y with
+     | [],_ | _,[] -> assert false
+     | x::xs,y::ys ->
+        List.fold_left
+          (fun acc x ->
+            List.fold_left (fun acc y -> Binop (Or, acc, link x y)) acc (y::ys))
+            (link x y) xs
 
-let remove_tlink' f =
-  fold_formula lit (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
+let remove_tlink' ~maxprof ~functions f =
+  fold_formula (lit ~maxprof ~functions) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
-let rec remove_tlink x = match x with
-  | FLeaf f -> FLeaf (remove_tlink' f)
-  | FForall (a,g,x) -> FForall (a, g, remove_tlink x)
-  | FExists (a,g,x) -> FExists (a, g, remove_tlink x)
-  | FBinop (b,x,y) -> FBinop (b, remove_tlink x, remove_tlink y)
+let remove_tlink ~maxprof ~functions x =
+  let rec aux x = match x with
+  | FLeaf f -> FLeaf (remove_tlink' ~maxprof ~functions f)
+  | FForall (a,g,x) -> FForall (a, g, aux x)
+  | FExists (a,g,x) -> FExists (a, g, aux x)
+  | FBinop (b,x,y) -> FBinop (b, aux x, aux y)
+  in aux x
 
-let remove_tlink_general (General (xs,f)) = General (xs, remove_tlink' f)
+let remove_tlink_general ~maxprof ~functions (General (xs,f)) =
+  General (xs, remove_tlink' ~maxprof ~functions f)
 
-let final_of_program ({vars;safe;ensure;maintain} : string program) : string final_program =
+let final_of_program ~maxprof ~functions ({vars;safe;ensure;maintain} : string program) : string final_program =
   let vars = inline_vars_in_vars vars in
-  let fsafe = List.map (fun x -> remove_tlink (fsafe_of_safe (safe_of_nf (normal_form vars x)))) safe in
-  let fensure = List.map remove_tlink_general ensure in
-  let fmaintain = List.map remove_tlink_general maintain in
+  let fsafe =
+    List.map
+      (fun x -> remove_tlink ~maxprof ~functions (fsafe_of_safe (safe_of_nf (normal_form vars x)))) safe in
+  let fensure = List.map (remove_tlink_general ~maxprof ~functions) ensure in
+  let fmaintain = List.map (remove_tlink_general ~maxprof ~functions) maintain in
   {fsafe; fensure; fmaintain}
 
 let print_final ({fsafe; fensure; fmaintain} : string final_program) =
