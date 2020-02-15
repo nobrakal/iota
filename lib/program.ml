@@ -2,19 +2,23 @@ type binop = And | Or
 
 type binpred = Eq | Link
 
+type rbinpred =
+  | TLink
+  | B of binpred
+
 type 'a var =
   | V of 'a
   | Parent of 'a var
 
-type 'a guard = binpred * 'a var * 'a var
+type ('a,'b) guard = 'b * 'a var * 'a var
 
-type 'a dynamic =
+type ('a,'b) dynamic =
   | Has of 'a var
-  | Bin of 'a guard
+  | Bin of ('a,'b) guard
   | Other of string * 'a var
 
-type 'a lit =
-  | Dyn of bool * 'a dynamic
+type ('a,'b) lit =
+  | Dyn of bool * ('a,'b) dynamic
   | Stat of string * 'a var
 
 type 'a formula =
@@ -27,13 +31,13 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * 'a guard * ('a,'l) pre_safe
-  | Exists of 'a * 'a guard * ('a,'l) pre_safe
+  | Forall of 'a * ('a, binpred) guard * ('a,'l) pre_safe
+  | Exists of 'a * ('a, binpred) guard * ('a,'l) pre_safe
 
-type 'a safe = ('a, 'a lit) pre_safe
+type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 
 type ('a,'l) general =
-  | General of 'a guard list * 'l formula
+  | General of ('a, binpred) guard list * 'l formula
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
@@ -44,8 +48,8 @@ type ('a,'l) pre_program =
   ; ensure : ('a, 'l) general list
   ; maintain : ('a, 'l) general list }
 
-type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
-type 'a program = ('a, 'a lit) pre_program
+type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program
+type 'a program = ('a, ('a, rbinpred) lit) pre_program
 
 let map_var f x =
   let rec aux = function
@@ -82,23 +86,28 @@ let string_of_var s =
   | Parent x ->  "Parent" ^ paren (aux x)
   in aux
 
-let string_of_guard s (b,x,y) =
-  let s = string_of_var s in
-  let b = match b with
-    | Link -> "Link"
-    | Eq -> "Eq" in
-  b ^ paren ((s x) ^ "," ^ (s y))
+let string_of_binpred = function
+  | Link -> "Link"
+  | Eq -> "Eq"
 
-let string_of_dynamic s =
+let string_of_rbinpred = function
+  | TLink -> "TLink"
+  | B b -> string_of_binpred b
+
+let string_of_guard s f (b,x,y) =
+  let s = string_of_var s in
+  f b ^ paren ((s x) ^ "," ^ (s y))
+
+let string_of_dynamic s f =
   let s' = string_of_var s in function
   | Has x -> "Has" ^ paren (s' x)
   | Other (x,y) -> x ^ paren (s' y)
-  | Bin t -> string_of_guard s t
+  | Bin t -> string_of_guard s f t
 
-let string_of_lit s = function
+let string_of_lit s f = function
   | Dyn (b,x) ->
      let pref = if b then "+" else "" in
-     pref ^ string_of_dynamic s x
+     pref ^ string_of_dynamic s f x
   | Stat (x,y) -> x ^ paren (string_of_var s y)
 
 let string_of_binop = function
@@ -118,14 +127,14 @@ let print_formula lit x = print_endline (string_of_formula lit x)
 
 let string_of_safe s p x =
   let rec aux = function
-    | Leaf x -> "{" ^ s x ^ "}"
+    | Leaf x -> s x
     | Var x -> p x
     | Apply (x,y) ->
        paren (aux x) ^ paren (aux y)
     | Forall (x,y,z) ->
-       "forall " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
+       "forall " ^ p x  ^ paren (string_of_guard p string_of_binpred y) ^ paren (aux z)
     | Exists (x,y,z) ->
-       "exists " ^ p x  ^ paren (string_of_guard p y) ^ paren (aux z)
+       "exists " ^ p x  ^ paren (string_of_guard p string_of_binpred y) ^ paren (aux z)
     | Formula f -> auxf f
   and auxf = function
     | Lit x -> aux x
@@ -140,7 +149,8 @@ let string_of_general s p (General (xs,x)) =
   let str =
     match xs with
     | [] -> ""
-    | x::xs -> List.fold_left (fun acc x -> acc ^ "->" ^ string_of_guard p x) (string_of_guard p x) xs in
+    | x::xs -> List.fold_left (fun acc x -> acc ^ "->" ^ string_of_guard p string_of_binpred x)
+                 (string_of_guard p string_of_binpred x) xs in
   str ^ space "=>" ^ string_of_formula s x
 
 let print_general s p x = print_endline (string_of_general s p x)
@@ -199,9 +209,9 @@ module type Manip =
     val to_list : S.t -> S.elt list
     module M : Map.S with type key = t
 
-    val variables_of_dynamic : S.elt dynamic -> S.t
-    val variables_of_lit : S.elt lit -> S.t
-    val variables_of_formula : S.elt lit formula -> S.t
+    val variables_of_dynamic : (S.elt,'a) dynamic -> S.t
+    val variables_of_lit : (S.elt,'a) lit -> S.t
+    val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
   end
 
@@ -220,8 +230,8 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Dyn (_,x) -> variables_of_dynamic x
     | Stat (_,x) -> S.singleton (extract_var x)
 
-  let variables_of_formula =
-    fold_formula variables_of_lit (fun x -> x) (fun _ -> S.union)
+  let variables_of_formula x =
+    fold_formula variables_of_lit (fun x -> x) (fun _ -> S.union) x
 
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 

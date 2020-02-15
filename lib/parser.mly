@@ -2,6 +2,7 @@
    open Program
 
    let list_of_option x = Option.value ~default:[] x
+   let lift_t f (b,x,y) = (f b, x, y)
 %}
 
 (*** TOKENS ***)
@@ -99,7 +100,7 @@ lit:
 
 dyn:
 | HAS "(" x=term ")" { Has x }
-| g=guard { Bin g }
+| g=guard { Bin (lift_t (fun x -> B x) g) }
 | p=UpperId "(" x=term ")" { Other (p,x) }
 
 guard:

@@ -2,8 +2,8 @@ open Program
 
 type ('a,'l) pre_fsafe =
   | FLeaf of 'l formula
-  | FForall of 'a * 'a guard * ('a,'l) pre_fsafe
-  | FExists of 'a * 'a guard * ('a,'l) pre_fsafe
+  | FForall of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
+  | FExists of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
 
 let par x = "(" ^ x ^ ")"
@@ -13,18 +13,18 @@ let string_of_fsafe f e u =
   let rec aux = function
     | FLeaf x -> string_of_formula f x
     | FForall (a,g,x) ->
-       "forall " ^ e a ^ ". " ^ par (string_of_guard e g) ^ space "->" ^ par (aux x)
+       "forall " ^ e a ^ ". " ^ par (string_of_guard e string_of_binpred g) ^ space "->" ^ par (aux x)
     | FExists (a,g,x) ->
-       "exists " ^ e a ^ ". " ^ par (string_of_guard e g) ^ space "&&" ^ par (aux x)
+       "exists " ^ e a ^ ". " ^ par (string_of_guard e string_of_binpred g) ^ space "&&" ^ par (aux x)
     | FBinop (b,x,y) -> par (aux x) ^ space (string_of_binop b) ^ par (aux y)
   in aux u
 
 let print_fsafe f e x = print_endline (string_of_fsafe f e x)
 
 type 'a final_program =
-  { fsafe : ('a, 'a lit) pre_fsafe list
-  ; fensure : ('a, 'a lit) general list
-  ; fmaintain : ('a, 'a lit) general list }
+  { fsafe : ('a, ('a, binpred) lit) pre_fsafe list
+  ; fensure : ('a, ('a, binpred) lit) general list
+  ; fmaintain : ('a, ('a, binpred) lit) general list }
 
 type ('a,'l) nf =
   | Safe of ('a,'l) pre_safe
@@ -117,19 +117,40 @@ let inline_vars_in_vars vars =
   in
   List.fold_left aux [] vars
 
-let final_of_program {vars;safe;ensure;maintain} =
+let dyn = function
+  | Has x -> Has x
+  | Other (s,x) -> Other (s,x)
+  | Bin (B x, a, b) -> Bin (x,a,b)
+  | Bin _ -> assert false
+
+let lit = function
+    | Stat (s,x) -> Stat (s,x)
+    | Dyn (b,d) -> Dyn (b,dyn d)
+
+let remove_tlink' f =
+  fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
+
+let rec remove_tlink x = match x with
+  | FLeaf f -> FLeaf (remove_tlink' f)
+  | FForall (a,g,x) -> FForall (a, g, remove_tlink x)
+  | FExists (a,g,x) -> FExists (a, g, remove_tlink x)
+  | FBinop (b,x,y) -> FBinop (b, remove_tlink x, remove_tlink y)
+
+let remove_tlink_general (General (xs,f)) = General (xs, remove_tlink' f)
+
+let final_of_program ({vars;safe;ensure;maintain} : string program) : string final_program =
   let vars = inline_vars_in_vars vars in
-  let fsafe = List.map (fun x -> fsafe_of_safe (safe_of_nf (normal_form vars x))) safe in
-  let fensure = ensure in
-  let fmaintain = maintain in
+  let fsafe = List.map (fun x -> remove_tlink (fsafe_of_safe (safe_of_nf (normal_form vars x)))) safe in
+  let fensure = List.map remove_tlink_general ensure in
+  let fmaintain = List.map remove_tlink_general maintain in
   {fsafe; fensure; fmaintain}
 
 let print_final ({fsafe; fensure; fmaintain} : string final_program) =
   let print_list f xs =
     List.iter (fun x -> f x; Printf.printf ";\n") xs in
   let id x = x in
-  print_list (print_fsafe (string_of_lit id) id) fsafe;
+  print_list (print_fsafe (string_of_lit id string_of_binpred) id) fsafe;
   Printf.printf "\nensure\n";
-  print_list (print_general (string_of_lit id) id) fensure;
+  print_list (print_general (string_of_lit id string_of_binpred) id) fensure;
     Printf.printf "\nmaintain\n";
-  print_list (print_general (string_of_lit id) id) fmaintain
+  print_list (print_general (string_of_lit id string_of_binpred) id) fmaintain

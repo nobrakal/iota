@@ -2,19 +2,23 @@ type binop = And | Or
 
 type binpred = Eq | Link
 
+type rbinpred =
+  | TLink
+  | B of binpred
+
 type 'a var =
   | V of 'a
   | Parent of 'a var
 
-type 'a guard = binpred * 'a var * 'a var
+type ('a,'b) guard = 'b * 'a var * 'a var
 
-type 'a dynamic =
+type ('a,'b) dynamic =
   | Has of 'a var
-  | Bin of 'a guard
+  | Bin of ('a,'b) guard
   | Other of string * 'a var
 
-type 'a lit =
-  | Dyn of bool * 'a dynamic
+type ('a,'b) lit =
+  | Dyn of bool * ('a,'b) dynamic
   | Stat of string * 'a var
 
 type 'a formula =
@@ -28,19 +32,21 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * 'a guard * ('a,'l) pre_safe
-  | Exists of 'a * 'a guard * ('a,'l) pre_safe
+  | Forall of 'a * ('a, binpred) guard * ('a,'l) pre_safe
+  | Exists of 'a * ('a, binpred) guard * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
-type 'a safe = ('a, 'a lit) pre_safe
+type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 
 val map_var : ('a -> 'b) -> 'a var -> 'b var
 val extract_var : 'a var -> 'a
 
 val string_of_var : ('a -> string) -> 'a var -> string
-val string_of_guard : ('a -> string) -> binpred * 'a var * 'a var -> string
-val string_of_dynamic : ('a -> string) -> 'a dynamic -> string
-val string_of_lit : ('a -> string) -> 'a lit -> string
+val string_of_binpred : binpred -> string
+val string_of_rbinpred : rbinpred -> string
+val string_of_guard : ('a -> string) -> ('b -> string) -> 'b * 'a var * 'a var -> string
+val string_of_dynamic : ('a -> string) -> ('b -> string) -> ('a, 'b) dynamic -> string
+val string_of_lit : ('a -> string) -> ('b -> string) -> ('a, 'b) lit -> string
 val string_of_binop : binop -> string
 val string_of_formula : ('a -> string) -> 'a formula -> string
 val print_formula : ('a -> string) -> 'a formula -> unit
@@ -51,7 +57,7 @@ val print_safe :
   ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> unit
 
 type ('a,'l) general =
-  | General of 'a guard list * 'l formula
+  | General of ('a, binpred) guard list * 'l formula
 
 val string_of_general :
   ('a -> string) -> ('b -> string) -> ('b, 'a) general -> string
@@ -69,10 +75,10 @@ type ('a,'l) pre_program =
   ; maintain : ('a,'l) general list }
 
 (** A program which doesn't distinguish static and dynamic predicates *)
-type 'a parsed_program = ('a, bool * 'a dynamic) pre_program
+type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program
 
 (** A well-formed program *)
-type 'a program = ('a, 'a lit) pre_program
+type 'a program = ('a, ('a, rbinpred) lit) pre_program
 
 val fold_formula :
   ('a -> 'b) ->
@@ -99,9 +105,9 @@ module type Manip =
     val to_list : S.t -> S.elt list
     module M : Map.S with type key = t
 
-    val variables_of_dynamic : S.elt dynamic -> S.t
-    val variables_of_lit : S.elt lit -> S.t
-    val variables_of_formula : S.elt lit formula -> S.t
+    val variables_of_dynamic : (S.elt,'a) dynamic -> S.t
+    val variables_of_lit : (S.elt,'a) lit -> S.t
+    val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
   end
 
