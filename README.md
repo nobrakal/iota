@@ -12,13 +12,18 @@ lower_lit ::= [a-z] [a-Z]*
 term ::=
   | lower_lit
   | Parent (lower_lit)
+  | lower_lit.lower_lit (* x.f is f(x) *)
 
 guard ::=
   | Link(term,term)
   | Eq(term,term)
 
-predicate ::=
+rguard ::=
   | guard
+  | TLink(term,term)
+
+predicate ::=
+  | rguard
   | Has(term)
   | upper_lit (term)
 
