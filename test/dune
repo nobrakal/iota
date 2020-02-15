@@ -1,2 +1,4 @@
 (test
- (name iota))
+ (name test)
+ (deps (source_tree tests/))
+ (libraries iota alcotest))
