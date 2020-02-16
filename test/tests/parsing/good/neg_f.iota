@@ -1,0 +1,1 @@
+not (E(x) && (forall z Eq(z,x) -> not (E(z))))

@@ -55,9 +55,25 @@ let replace_vars vars =
     | Dyn (b,x) -> Dyn (b, dyn x) in
   fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun x y z -> Binop (x,y,z))
 
+let rec negate_formula x =
+  match x with
+  | Lit x -> Not (Lit x)
+  | Not x -> x
+  | Binop (b, x, y) ->
+     let b = match b with
+       | Or -> And
+       | And -> Or in
+     Binop (b, negate_formula x, negate_formula y)
+
+let rec desc_neg x =
+  match x with
+  | Lit _ -> x
+  | Binop (b, x, y) -> Binop (b, desc_neg x, desc_neg y)
+  | Not x -> negate_formula (desc_neg x)
+
 let rec negate x =
   match x with
-  | FLeaf _ -> x
+  | FLeaf x -> (FLeaf (desc_neg (negate_formula x)))
   | FForall (x,b,f) -> FExists (x, b, negate f)
   | FExists (x,b,f) -> FForall (x, b, negate f)
   | FBinop (b,x,y) ->

@@ -122,7 +122,7 @@ let string_of_formula lit =
   let rec aux = function
     | Lit x -> lit x
     | Not f ->
-       "not" ^ paren (aux f)
+       "not " ^ paren (aux f)
     | Binop (u,x,y) ->
        paren (aux x) ^ space (string_of_binop u) ^ paren (aux y)
   in aux
