@@ -11,7 +11,7 @@ lower_lit ::= [a-z] [a-Z]*
 
 term ::=
   | lower_lit
-  | Parent (lower_lit)
+  | parent (lower_lit)
   | lower_lit.lower_lit (* x.f is f(x) *)
 
 guard ::=

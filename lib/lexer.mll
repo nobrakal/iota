@@ -52,7 +52,7 @@ rule token = parse
   | "Has"    { HAS }
   | "TLink"  { TLINK }
   | "Link"   { LINK }
-  | "Parent" { PARENT }
+  | "parent" { PARENT }
   | "Eq"     { EQQ }
 
   | "("      { LPAREN }
