@@ -13,9 +13,9 @@ let string_of_fsafe f e u =
   let rec aux = function
     | FLeaf x -> string_of_formula f x
     | FForall (a,g,x) ->
-       "forall " ^ e a ^ ". " ^ par (string_of_guard e string_of_binpred g) ^ space "->" ^ par (aux x)
+       "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ par (aux x)
     | FExists (a,g,x) ->
-       "exists " ^ e a ^ ". " ^ par (string_of_guard e string_of_binpred g) ^ space "&&" ^ par (aux x)
+       "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ par (aux x)
     | FBinop (b,x,y) -> par (aux x) ^ space (string_of_binop b) ^ par (aux y)
   in aux u
 
@@ -174,12 +174,28 @@ let final_of_program ~maxprof ~functions ({vars;safe;ensure;maintain} : string p
   let fmaintain = List.map (remove_tlink_general ~maxprof ~functions) maintain in
   {fsafe; fensure; fmaintain}
 
-let print_final ({fsafe; fensure; fmaintain} : string final_program) =
-  let print_list f xs =
-    List.iter (fun x -> f x; Printf.printf ";\n") xs in
+let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
+  let string_of_list f xs = String.concat ";\n" @@
+    List.map f xs in
   let id x = x in
-  print_list (print_fsafe (string_of_lit id string_of_binpred) id) fsafe;
-  Printf.printf "\nensure\n";
-  print_list (print_general (string_of_lit id string_of_binpred) id) fensure;
-    Printf.printf "\nmaintain\n";
-  print_list (print_general (string_of_lit id string_of_binpred) id) fmaintain
+  string_of_list (string_of_fsafe (string_of_lit id string_of_binpred) id) fsafe
+  ^ "\nensure\n" ^
+  string_of_list (string_of_general (string_of_lit id string_of_binpred) id) fensure
+  ^ "\nmaintain\n" ^
+   string_of_list (string_of_general (string_of_lit id string_of_binpred) id) fmaintain
+
+let print_final x = print_endline (string_of_final x)
+
+let rec normalize' x =
+  match x with
+  | FLeaf _ -> x
+  | FForall (a,g,x) -> FForall (a,g, normalize' x)
+  | FExists (a,g,x) -> FExists (a,g, normalize' x)
+  | FBinop (b,x,y) ->
+     match normalize' x, normalize' y with
+     | FLeaf x, FLeaf y -> FLeaf (Binop (b,x,y))
+     | x,y -> FBinop (b,x,y)
+
+let normalize {fsafe; fensure; fmaintain} =
+  let fsafe = List.map normalize' fsafe in
+  {fsafe; fensure; fmaintain}

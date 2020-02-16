@@ -7,9 +7,11 @@ let prefix = "tests/"
 
 let good = "good"
 
+let compile' x = Iota.Main.main ~maxprof ~functions ~static ~dynamic x
+
 let compile x =
   let chan = open_in x in
-  let res = Iota.Main.main ~maxprof ~functions ~static ~dynamic chan in
+  let res = compile' (Lexing.from_channel chan) in
   close_in chan;
   res
 
@@ -18,25 +20,44 @@ let compile_good x =
   | Ok _ -> true
   | Error _ -> false
 
-let check_compile_good x () = Alcotest.(check bool) x true (compile_good x)
+let tt = Alcotest.testable (Fmt.of_to_string (Iota.Final.string_of_final)) ( = )
+
+let reentrant_compile x () =
+  match compile x with
+  | Error _ -> Alcotest.fail x
+  | Ok y ->
+     match compile' (Lexing.from_string (Iota.Final.string_of_final y)) with
+     | Error _ -> Alcotest.fail x
+     | Ok y' ->
+     Alcotest.check tt x
+       (Iota.Final.normalize y)
+       (Iota.Final.normalize y')
+
+let check_pred p x () = Alcotest.(check bool) x true (p x)
+
+let list_of_files x = Array.to_list (Sys.readdir x)
 
 let check_compile_goods dgood =
-  let open Alcotest in
-  List.map (fun x -> test_case (x ^ " " ^ good) `Quick (check_compile_good (dgood ^ x)))
-    (Array.to_list (Sys.readdir dgood))
+  let aux x =
+    let open Alcotest in
+    test_case (x ^ " " ^ good) `Quick (check_pred compile_good (dgood ^ x))
+  in List.map aux (list_of_files dgood)
 
-let parsing () =
-  let dir = prefix ^ "parsing/" in
-  let dgood = dir ^ "good/" in
-  check_compile_goods dgood
+let check_reentrant_compil dgood =
+  let aux x =
+    let open Alcotest in
+    test_case (x ^ " " ^ good) `Quick (reentrant_compile (dgood ^ x))
+  in List.map aux (list_of_files dgood)
 
-let typecheck () =
-  let dir = prefix ^ "typechecking/" in
+let test_good_cases f c =
+  let dir = prefix ^ c in
   let dgood = dir ^ "good/" in
-  check_compile_goods dgood
+  f dgood
 
 let () =
   let open Alcotest in
   run "Iota"
-    [ "parsing", parsing ()
-    ; "typecheking", typecheck ()]
+    [ "parsing", test_good_cases check_compile_goods "parsing/"
+    ; "parsing reentrant", test_good_cases check_reentrant_compil "parsing/"
+    ; "typecheking", test_good_cases check_compile_goods "typechecking/"
+    ; "typecheking reentrant", test_good_cases check_reentrant_compil "typechecking/"]

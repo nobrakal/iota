@@ -6,7 +6,7 @@ let main filename =
   let maxprof = 2 in
   let static = ["E"] in
   let dynamic = ["Active"; "Open"] in
-  match Main.main ~maxprof ~functions ~static ~dynamic chan with
+  match Main.main ~maxprof ~functions ~static ~dynamic (Lexing.from_channel chan) with
   | Error s ->
      Main.print_err s
   | Ok ast ->

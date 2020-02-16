@@ -15,4 +15,4 @@ val main :
   functions:string list ->
   static:string list ->
   dynamic:string list ->
-  in_channel -> (string Final.final_program, err) result
+  Lexing.lexbuf -> (string Final.final_program, err) result

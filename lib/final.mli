@@ -20,4 +20,8 @@ val final_of_program :
   functions:string list ->
   string Program.program -> string final_program
 
+val string_of_final : string final_program -> string
+
 val print_final : string final_program -> unit
+
+val normalize : 'a final_program -> 'a final_program

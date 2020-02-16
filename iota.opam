@@ -23,6 +23,7 @@ depends: [
   "menhir"   {> "20180528"}
   "odoc"     {with-doc  & >= "1.2.0"}
   "alcotest" {with-test & >= "0.8.0"}
+  "fmt"      {with-test & >= "0.8.0"}
 ]
 
 build: [

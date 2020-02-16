@@ -20,8 +20,8 @@ let print_err x =
        "Structure: " ^ Structure.string_of_invalidity e
   in Printf.eprintf "%s\n" str
 
-let main ~maxprof ~functions ~static ~dynamic chan =
-  match try Some (Parser.program Lexer.token (Lexing.from_channel chan)) with Parser.Error -> None with
+let main ~maxprof ~functions ~static ~dynamic lexbuf =
+  match try Some (Parser.program Lexer.token lexbuf) with Parser.Error -> None with
   | None -> Error Menhir
   | Some ast ->
      let static = Program.SString.of_list static in
