@@ -3,4 +3,4 @@ Link (x.f, y.g) && +Active(x)
 
 ensure
 
-Link (z.f, w.g) => (not (E(z)) || (E(w) && Open (z.f)))
+Link (z.f, w.g) => (E(z) -> (E(w) && Open (z.f)))
