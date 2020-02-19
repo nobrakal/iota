@@ -54,10 +54,12 @@ let test_good_cases f c =
   let dgood = dir ^ "good/" in
   f dgood
 
+let test_dir dir =
+  let dir' = dir ^ "/" in
+  [ dir, test_good_cases check_compile_goods dir'
+  ; dir ^ " reentrant", test_good_cases check_reentrant_compil dir' ]
+
 let () =
   let open Alcotest in
   run "Iota"
-    [ "parsing", test_good_cases check_compile_goods "parsing/"
-    ; "parsing reentrant", test_good_cases check_reentrant_compil "parsing/"
-    ; "typecheking", test_good_cases check_compile_goods "typechecking/"
-    ; "typecheking reentrant", test_good_cases check_reentrant_compil "typechecking/"]
+    (test_dir "parsing" @ test_dir "typechecking" @ test_dir "structure")

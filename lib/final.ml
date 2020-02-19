@@ -82,17 +82,6 @@ let rec negate x =
        | Or -> And in
      FBinop (b, negate x, negate y)
 
-let rec fsafe_of_safe x =
-  match x with
-  | Leaf x -> FLeaf x
-  | Forall (x,g,a) -> FForall (x, g, fsafe_of_safe a)
-  | Exists (x,g,a) -> FExists (x, g, fsafe_of_safe a)
-  | Var _ | Apply _ -> assert false
-  | Formula f ->
-     fold_formula (fun x -> fsafe_of_safe x)
-       (fun x -> negate x)
-       (fun b x y -> FBinop (b,x,y)) f
-
 (*  The program needs to typecheck ! *)
 let rec normal_form vars = function
   | Leaf x -> Safe (Leaf (replace_vars vars x))
@@ -132,6 +121,41 @@ let inline_vars_in_vars vars =
     (name,closure)::vars
   in
   List.fold_left aux [] vars
+
+let rec simplifiy_parent x =
+  match x with
+  | V _ -> x
+  | Func (s,a) -> Func (s, simplifiy_parent a)
+  | Parent (Func (_,a)) -> simplifiy_parent a
+  | Parent a -> Parent (simplifiy_parent a)
+
+let simplif_dyn = function
+  | Has x -> Has (simplifiy_parent x)
+  | Bin (x,a,b) -> Bin (x, simplifiy_parent a, simplifiy_parent b)
+  | Other (s,v) -> Other (s, simplifiy_parent v)
+
+let simplif_lit = function
+  | Dyn (b,x) -> Dyn (b,simplif_dyn x)
+  | Stat (s,x) -> Stat (s, simplifiy_parent x)
+
+let simplif_formula x =
+  fold_formula (fun x -> Lit (simplif_lit x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) x
+
+let simplif_general (General (xs,x)) =
+  let xs = List.map (fun (x,a,b) -> (x, simplifiy_parent a, simplifiy_parent b)) xs in
+  let x = simplif_formula x in
+  General (xs,x)
+
+let rec fsafe_of_safe x =
+  match x with
+  | Leaf x -> FLeaf (simplif_formula x)
+  | Forall (x,g,a) -> FForall (x, g, fsafe_of_safe a)
+  | Exists (x,g,a) -> FExists (x, g, fsafe_of_safe a)
+  | Var _ | Apply _ -> assert false
+  | Formula f ->
+     fold_formula (fun x -> fsafe_of_safe x)
+       (fun x -> negate x)
+       (fun b x y -> FBinop (b,x,y)) f
 
 let dyn = function
   | Has x -> Ok (Has x)
@@ -186,8 +210,8 @@ let final_of_program ~maxprof ~functions ({vars;safe;ensure;maintain} : string p
   let fsafe =
     List.map
       (fun x -> remove_tlink ~maxprof ~functions (fsafe_of_safe (safe_of_nf (normal_form vars x)))) safe in
-  let fensure = List.map (remove_tlink_general ~maxprof ~functions) ensure in
-  let fmaintain = List.map (remove_tlink_general ~maxprof ~functions) maintain in
+  let fensure = List.map (fun x -> simplif_general (remove_tlink_general ~maxprof ~functions x)) ensure in
+  let fmaintain = List.map (fun x -> simplif_general (remove_tlink_general ~maxprof ~functions x)) maintain in
   {fsafe; fensure; fmaintain}
 
 let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
