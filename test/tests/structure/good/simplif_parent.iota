@@ -1,0 +1,5 @@
+E(parent(x.f))
+
+ensure
+
+Eq(parent(x.g),parent(x.f)) => E(x)
