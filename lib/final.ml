@@ -1,7 +1,10 @@
 open Program
 
+(* Not and Exact *)
+type tag = N | E
+
 type ('a,'l) pre_fsafe =
-  | FLeaf of 'l formula
+  | FLeaf of tag * 'l
   | FForall of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FExists of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
@@ -9,9 +12,13 @@ type ('a,'l) pre_fsafe =
 let par x = "(" ^ x ^ ")"
 let space x = " " ^ x ^ " "
 
+let string_of_tag = function
+  | N -> "not "
+  | E -> ""
+
 let string_of_fsafe f e u =
   let rec aux = function
-    | FLeaf x -> string_of_formula f x
+    | FLeaf (x,y) -> string_of_tag x ^ par (f y)
     | FForall (a,g,x) ->
        "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ par (aux x)
     | FExists (a,g,x) ->
@@ -54,22 +61,13 @@ let replace_vars vars x =
     | Stat (x,i) -> Stat (x, replace i)
     | Dyn (b,x) -> Dyn (b, dyn x)
 
-let rec negate_formula x =
-  match x with
-  | Lit x -> Not (Lit x)
-  | Not x -> x
-  | Binop (b, x, y) ->
-     let b = match b with
-       | Or -> And
-       | And -> Or in
-     Binop (b, negate_formula x, negate_formula y)
-
-let desc_neg x =
-  fold_formula (fun x -> Lit x) negate_formula (fun b x y -> Binop (b,x,y)) x
+let negate_tag = function
+  | N -> E
+  | E -> N
 
 let rec negate x =
   match x with
-  | FLeaf x -> (FLeaf (desc_neg (negate_formula x)))
+  | FLeaf (x,y) -> FLeaf (negate_tag x, y)
   | FForall (x,b,f) -> FExists (x, b, negate f)
   | FExists (x,b,f) -> FForall (x, b, negate f)
   | FBinop (b,x,y) ->
@@ -122,11 +120,11 @@ let dyn = function
   | Bin (TLink, a, b) -> Error (a,b)
 
 let lit' = function
-    | Stat (s,x) -> Ok (Stat (s,x))
-    | Dyn (b,d) ->
-       match dyn d with
-       | Ok x -> Ok (Dyn (b,x))
-       | Error x -> Error (b,x)
+  | Stat (s,x) -> Ok (Stat (s,x))
+  | Dyn (b,d) ->
+     match dyn d with
+     | Ok x -> Ok (Dyn (b,x))
+     | Error x -> Error (b,x)
 
 let bind x f = List.(concat (map f x))
 
@@ -165,14 +163,13 @@ let fsafe_of_safe ~maxprof ~functions x =
     | (TLink,x,y) ->
        let link x y = f (Link, x, y) in
        let fold a b = FBinop (And, a, b) in
-       fold_paths ~maxprof ~functions fold link x y
-  in
+       fold_paths ~maxprof ~functions fold link x y in
   let rec aux x =
     match x with
     | Var _ | Apply _ ->
        assert false
-    | Leaf x ->
-       FLeaf (lit ~maxprof ~functions x)
+    | Leaf y ->
+       fold_formula (fun x -> FLeaf (E,x)) negate (fun a b c -> FBinop (a,b,c)) (lit ~maxprof ~functions y)
     | Forall (x,g,a) ->
        quantif (fun g -> FForall (x, g, aux a)) g
     | Exists (x,g,a) ->
@@ -221,17 +218,3 @@ let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
    string_of_list (string_of_general (string_of_lit id string_of_binpred) id string_of_binpred) fmaintain
 
 let print_final x = print_endline (string_of_final x)
-
-let rec normalize' x =
-  match x with
-  | FLeaf _ -> x
-  | FForall (a,g,x) -> FForall (a,g, normalize' x)
-  | FExists (a,g,x) -> FExists (a,g, normalize' x)
-  | FBinop (b,x,y) ->
-     match normalize' x, normalize' y with
-     | FLeaf x, FLeaf y -> FLeaf (Binop (b,x,y))
-     | x,y -> FBinop (b,x,y)
-
-let normalize {fsafe; fensure; fmaintain} =
-  let fsafe = List.map normalize' fsafe in
-  {fsafe; fensure; fmaintain}

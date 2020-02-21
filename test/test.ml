@@ -29,9 +29,7 @@ let reentrant_compile x () =
      match compile' (Lexing.from_string (Iota.Final.string_of_final y)) with
      | Error _ -> Alcotest.fail x
      | Ok y' ->
-     Alcotest.check tt x
-       (Iota.Final.normalize y)
-       (Iota.Final.normalize y')
+     Alcotest.check tt x y y'
 
 let check_pred p x () = Alcotest.(check bool) x true (p x)
 

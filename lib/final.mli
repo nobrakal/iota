@@ -1,7 +1,11 @@
 open Program
 
+type tag =
+  | N (** Not *)
+  | E (** Exact *)
+
 type ('a,'l) pre_fsafe =
-  | FLeaf of 'l formula
+  | FLeaf of tag * 'l
   | FForall of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FExists of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
@@ -23,5 +27,3 @@ val final_of_program :
 val string_of_final : string final_program -> string
 
 val print_final : string final_program -> unit
-
-val normalize : 'a final_program -> 'a final_program
