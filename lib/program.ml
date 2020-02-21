@@ -185,9 +185,7 @@ let safe_of_parsed ~static ~dynamic =
     | Apply (x,y) -> Apply (aux x, aux y)
     | Forall (a,l,x) -> Forall (a, l, aux x)
     | Exists (a,l,x) -> Exists (a, l, aux x)
-    | Formula f ->
-       Formula
-         (fold_formula (fun x -> Lit (aux x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f)
+    | Formula f -> Formula (map_formula aux f)
   in aux
 
 let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =

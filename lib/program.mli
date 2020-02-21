@@ -85,6 +85,9 @@ val fold_formula :
   ('a -> 'b) ->
   ('b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
 
+val map_formula :
+  ('a -> 'b) -> 'a formula -> 'b formula
+
 type parse_error =
   | UnboundDynamic of string
   | UnboundSymbol of string

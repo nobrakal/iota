@@ -64,11 +64,8 @@ let rec negate_formula x =
        | And -> Or in
      Binop (b, negate_formula x, negate_formula y)
 
-let rec desc_neg x =
-  match x with
-  | Lit _ -> x
-  | Binop (b, x, y) -> Binop (b, desc_neg x, desc_neg y)
-  | Not x -> negate_formula (desc_neg x)
+let desc_neg x =
+  fold_formula (fun x -> Lit x) negate_formula (fun b x y -> Binop (b,x,y)) x
 
 let rec negate x =
   match x with
@@ -104,10 +101,7 @@ let rec normal_form vars = function
      let vars = List.remove_assoc x vars in
      Safe (Exists (x,f, safe_of_nf (normal_form vars y)))
   | Formula f ->
-     Safe (Formula
-             (fold_formula (fun x -> Lit (safe_of_nf (normal_form vars x)))
-             (fun x -> Not x)
-             (fun b x y -> Binop (b,x,y)) f))
+     Safe (Formula (map_formula (fun x -> safe_of_nf (normal_form vars x)) f))
 
 let inline_vars_in_vars vars =
   let aux vars (Def (name,args,body)) =
