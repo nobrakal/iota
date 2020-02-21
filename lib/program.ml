@@ -86,7 +86,7 @@ let space s = " " ^ s ^ " "
 let string_of_var s =
   let rec aux = function
   | V x -> s x
-  | Parent x -> "Parent" ^ paren (aux x)
+  | Parent x -> "parent" ^ paren (aux x)
   | Func (s,x) -> aux x ^ "." ^ s
   in aux
 
