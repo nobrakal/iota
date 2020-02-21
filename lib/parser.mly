@@ -2,7 +2,6 @@
    open Program
 
    let list_of_option x = Option.value ~default:[] x
-   let lift_t f (b,x,y) = (f b, x, y)
 %}
 
 (*** TOKENS ***)
@@ -103,15 +102,12 @@ lit:
 
 dyn:
 | HAS "(" x=term ")" { Has x }
-| g=guard { Bin (lift_t (fun x -> B x) g) }
-| g=rguard { Bin g }
+| g=guard { Bin g }
 | p=UpperId "(" x=term ")" { Other (p,x) }
 
 guard:
-| EQQ "(" x=term "," y=term ")" { (Eq,x,y) }
-| LINK "(" x=term "," y=term ")" { (Link,x,y) }
-
-rguard:
+| EQQ "(" x=term "," y=term ")" { (B Eq,x,y) }
+| LINK "(" x=term "," y=term ")" { (B Link,x,y) }
 | TLINK "(" x=term "," y=term ")" { (TLink,x,y) }
 
 term:

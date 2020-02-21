@@ -33,8 +33,8 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * ('a, binpred) guard * ('a,'l) pre_safe
-  | Exists of 'a * ('a, binpred) guard * ('a,'l) pre_safe
+  | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Exists of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
@@ -57,23 +57,23 @@ val string_of_safe :
 val print_safe :
   ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> unit
 
-type ('a,'l) general =
-  | General of ('a, binpred) guard list * 'l formula
+type ('a,'l,'b) general =
+  | General of ('a, 'b) guard list * 'l formula
 
 val string_of_general :
-  ('a -> string) -> ('b -> string) -> ('b, 'a) general -> string
+  ('a -> string) -> ('b -> string) -> ('c -> string) -> ('b, 'a, 'c) general -> string
 val print_general :
-  ('a -> string) -> ('b -> string) -> ('b, 'a) general -> unit
+  ('a -> string) -> ('b -> string) -> ('c -> string) -> ('b, 'a, 'c) general -> unit
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
 
 (** A program which can be meaningless *)
 type ('a,'l) pre_program =
-  { vars : ('a,'l) def list
+  { vars : ('a, 'l) def list
   ; safe : ('a, 'l) pre_safe list
-  ; ensure : ('a,'l) general list
-  ; maintain : ('a,'l) general list }
+  ; ensure : ('a, 'l, rbinpred) general list
+  ; maintain : ('a, 'l, rbinpred) general list }
 
 (** A program which doesn't distinguish static and dynamic predicates *)
 type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program

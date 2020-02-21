@@ -11,8 +11,8 @@ val print_fsafe : ('b -> string) -> ('a -> string) -> ('a,'b) pre_fsafe -> unit
 
 type 'a final_program =
   { fsafe : ('a, ('a, binpred) lit) pre_fsafe list
-  ; fensure : ('a, ('a, binpred) lit) general list
-  ; fmaintain : ('a, ('a, binpred) lit) general list }
+  ; fensure : ('a, ('a, binpred) lit, binpred) general list
+  ; fmaintain : ('a, ('a, binpred) lit, binpred) general list }
 
 (** Transform a program that typecheck into a final one *)
 val final_of_program :

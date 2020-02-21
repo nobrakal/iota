@@ -23,8 +23,8 @@ let print_fsafe f e x = print_endline (string_of_fsafe f e x)
 
 type 'a final_program =
   { fsafe : ('a, ('a, binpred) lit) pre_fsafe list
-  ; fensure : ('a, ('a, binpred) lit) general list
-  ; fmaintain : ('a, ('a, binpred) lit) general list }
+  ; fensure : ('a, ('a, binpred) lit, binpred) general list
+  ; fmaintain : ('a, ('a, binpred) lit, binpred) general list }
 
 type ('a,'l) nf =
   | Safe of ('a,'l) pre_safe
@@ -122,17 +122,6 @@ let inline_vars_in_vars vars =
   in
   List.fold_left aux [] vars
 
-let rec fsafe_of_safe x =
-  match x with
-  | Leaf x -> FLeaf x
-  | Forall (x,g,a) -> FForall (x, g, fsafe_of_safe a)
-  | Exists (x,g,a) -> FExists (x, g, fsafe_of_safe a)
-  | Var _ | Apply _ -> assert false
-  | Formula f ->
-     fold_formula (fun x -> fsafe_of_safe x)
-       (fun x -> negate x)
-       (fun b x y -> FBinop (b,x,y)) f
-
 let dyn = function
   | Has x -> Ok (Has x)
   | Other (s,x) -> Ok (Other (s,x))
@@ -146,48 +135,86 @@ let lit' = function
        | Ok x -> Ok (Dyn (b,x))
        | Error x -> Error (b,x)
 
-let bind x f = List.(fold_left rev_append [] (rev_map f x))
+let bind x f = List.(concat (map f x))
 
 let rec iter_bind n x f =
   if n = 0
   then x
   else iter_bind (n-1) (bind x f) f
 
+let fold_paths ~maxprof ~functions fold link x y =
+  let paths x =
+    iter_bind maxprof [x] (fun x -> List.map (fun f -> Func (f,x)) functions) in
+  match paths x, paths y with
+  | [],_ | _,[] -> assert false
+  | x::xs,y::ys ->
+     let aux x acc y = fold acc (link x y) in
+     List.fold_left
+       (fun acc x ->
+         List.fold_left (aux x) acc (y::ys))
+       (List.fold_left (aux x) (link x y) ys) xs
+
 let lit ~maxprof ~functions x =
   match lit' x with
   | Ok x -> Lit x
   | Error (b, (x,y)) ->
      let link x y = Lit (Dyn (b,(Bin (Link, x, y)))) in
-     let paths x = iter_bind maxprof [x] (fun x -> List.map (fun f -> Func (f,x)) functions) in
-     match paths x, paths y with
-     | [],_ | _,[] -> assert false
-     | x::xs,y::ys ->
-        List.fold_left
-          (fun acc x ->
-            List.fold_left (fun acc y -> Binop (Or, acc, link x y)) acc (y::ys))
-            (link x y) xs
+     let fold a b = Binop (Or,a,b) in
+     fold_paths ~maxprof ~functions fold link x y
 
-let remove_tlink' ~maxprof ~functions f =
+let remove_tlink ~maxprof ~functions f =
   fold_formula (lit ~maxprof ~functions) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
-let remove_tlink ~maxprof ~functions x =
-  let rec aux x = match x with
-  | FLeaf f -> FLeaf (remove_tlink' ~maxprof ~functions f)
-  | FForall (a,g,x) -> FForall (a, g, aux x)
-  | FExists (a,g,x) -> FExists (a, g, aux x)
-  | FBinop (b,x,y) -> FBinop (b, aux x, aux y)
+let fsafe_of_safe ~maxprof ~functions x =
+  let quantif f g =
+    match g with
+    | (B g,x,y) -> f (g,x,y)
+    | (TLink,x,y) ->
+       let link x y = f (Link, x, y) in
+       let fold a b = FBinop (And, a, b) in
+       fold_paths ~maxprof ~functions fold link x y
+  in
+  let rec aux x =
+    match x with
+    | Var _ | Apply _ ->
+       assert false
+    | Leaf x ->
+       FLeaf (remove_tlink ~maxprof ~functions x)
+    | Forall (x,g,a) ->
+       quantif (fun g -> FForall (x, g, aux a)) g
+    | Exists (x,g,a) ->
+       quantif (fun g -> FExists (x, g, aux a)) g
+    | Formula f ->
+       fold_formula aux
+         (fun x -> negate x)
+         (fun b x y -> FBinop (b,x,y)) f
   in aux x
 
+let conj xs =
+  let fmap = List.map in
+    fmap List.rev @@ (* NB: this conjunction keeps the order when distributing (Not very monadic...) *)
+      List.fold_left
+        (fun acc x -> bind acc (fun ys -> fmap (fun y -> y::ys) x))
+        ([[]]) xs
+
 let remove_tlink_general ~maxprof ~functions (General (xs,f)) =
-  General (xs, remove_tlink' ~maxprof ~functions f)
+  let f = remove_tlink ~maxprof ~functions f in
+  let fold = List.append in
+  let link x y = [(Link,x,y)] in
+  let aux x =
+    match x with
+    | (B b, x, y) -> [(b,x,y)]
+    | (TLink, x, y) -> fold_paths ~maxprof ~functions fold link x y in
+  let xs = conj (List.map aux xs) in
+  List.map (fun x -> General (x, f)) xs
 
 let final_of_program ~maxprof ~functions ({vars;safe;ensure;maintain} : string program) : string final_program =
   let vars = inline_vars_in_vars vars in
   let fsafe =
     List.map
-      (fun x -> remove_tlink ~maxprof ~functions (fsafe_of_safe (safe_of_nf (normal_form vars x)))) safe in
-  let fensure = List.map (fun x -> remove_tlink_general ~maxprof ~functions x) ensure in
-  let fmaintain = List.map (fun x -> remove_tlink_general ~maxprof ~functions x) maintain in
+      (fun x -> fsafe_of_safe ~maxprof ~functions (safe_of_nf (normal_form vars x))) safe in
+  let fensure = bind ensure (fun x -> remove_tlink_general ~maxprof ~functions x) in
+  let fmaintain = bind maintain (fun x -> remove_tlink_general ~maxprof ~functions x) in
   {fsafe; fensure; fmaintain}
 
 let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
@@ -196,9 +223,9 @@ let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
   let id x = x in
   string_of_list (string_of_fsafe (string_of_lit id string_of_binpred) id) fsafe
   ^ "\nensure\n" ^
-  string_of_list (string_of_general (string_of_lit id string_of_binpred) id) fensure
+  string_of_list (string_of_general (string_of_lit id string_of_binpred) id string_of_binpred) fensure
   ^ "\nmaintain\n" ^
-   string_of_list (string_of_general (string_of_lit id string_of_binpred) id) fmaintain
+   string_of_list (string_of_general (string_of_lit id string_of_binpred) id string_of_binpred) fmaintain
 
 let print_final x = print_endline (string_of_final x)
 

@@ -32,13 +32,13 @@ type ('a,'l) pre_safe =
   | Leaf of 'l formula
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * ('a, binpred) guard * ('a,'l) pre_safe
-  | Exists of 'a * ('a, binpred) guard * ('a,'l) pre_safe
+  | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Exists of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 
-type ('a,'l) general =
-  | General of ('a, binpred) guard list * 'l formula
+type ('a,'l,'b) general =
+  | General of ('a, 'b) guard list * 'l formula
 
 type ('a,'l) def =
   | Def of ('a * 'a list * ('a,'l) pre_safe)
@@ -46,8 +46,8 @@ type ('a,'l) def =
 type ('a,'l) pre_program =
   { vars : ('a,'l) def list
   ; safe : ('a, 'l) pre_safe list
-  ; ensure : ('a, 'l) general list
-  ; maintain : ('a, 'l) general list }
+  ; ensure : ('a, 'l, rbinpred) general list
+  ; maintain : ('a, 'l, rbinpred) general list }
 
 type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program
 type 'a program = ('a, ('a, rbinpred) lit) pre_program
@@ -136,9 +136,9 @@ let string_of_safe s p x =
     | Apply (x,y) ->
        paren (aux x) ^ paren (aux y)
     | Forall (x,y,z) ->
-       "forall " ^ p x  ^ paren (string_of_guard p string_of_binpred y) ^ paren (aux z)
+       "forall " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
     | Exists (x,y,z) ->
-       "exists " ^ p x  ^ paren (string_of_guard p string_of_binpred y) ^ paren (aux z)
+       "exists " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
     | Formula f -> auxf f
   and auxf = function
     | Lit x -> aux x
@@ -149,15 +149,15 @@ let string_of_safe s p x =
 
 let print_safe s p x = print_endline (string_of_safe s p x)
 
-let string_of_general s p (General (xs,x)) =
+let string_of_general s p g (General (xs,x)) =
   let str =
     match xs with
     | [] -> ""
-    | x::xs -> List.fold_left (fun acc x -> acc ^ "->" ^ string_of_guard p string_of_binpred x)
-                 (string_of_guard p string_of_binpred x) xs in
+    | x::xs -> List.fold_left (fun acc x -> acc ^ space "->" ^ string_of_guard p g x)
+                 (string_of_guard p g x) xs in
   str ^ space "=>" ^ string_of_formula s x
 
-let print_general s p x = print_endline (string_of_general s p x)
+let print_general s p g x = print_endline (string_of_general s p g x)
 
 module SString = Set.Make(String)
 
