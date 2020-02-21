@@ -30,7 +30,7 @@ type 'a formula =
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
-  | Leaf of 'l formula
+  | Leaf of 'l
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
@@ -53,9 +53,9 @@ val string_of_formula : ('a -> string) -> 'a formula -> string
 val print_formula : ('a -> string) -> 'a formula -> unit
 
 val string_of_safe :
-  ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> string
+  ('a -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> string
 val print_safe :
-  ('a formula -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> unit
+  ('a -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> unit
 
 type ('a,'l,'b) general =
   | General of ('a, 'b) guard list * 'l formula

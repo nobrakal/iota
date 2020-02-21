@@ -1,0 +1,5 @@
+forall x TLink(x,y) -> (E(x))
+
+ensure
+
+TLink(x,y) -> Eq(x,y) -> TLink(y,z) => E(y)

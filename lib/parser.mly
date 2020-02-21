@@ -62,15 +62,7 @@ letdef:
 | LET x=LowerId xs=list(LowerId) EQ y=safe { Def (x,xs,y) }
 
 safe:
-| x=safe_strong { x }
 | x=safe_formula { Formula x }
-
-(* A safe without a proper inclusion of formula *)
-safe_wf:
-| x=safe_atom_wf { x }
-| x=safe_strong { x }
-
-safe_strong:
 | FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }
 | EXISTS x=LowerId y=guard LAND z=safe { Exists (x,y,z) }
 | x=safe_apply { x }
@@ -80,16 +72,14 @@ safe_apply:
 | x=safe_apply y=safe_atom { Apply (x,y) }
 
 safe_atom:
-| x=formula_atom { Leaf x }
-| "(" x=safe_wf ")" { x }
+| x=lit { Leaf x }
+| "(" x=safe ")" { x }
 | x=LowerId { Var x }
 
-let safe_formula_lit := x=safe_atom; { Lit x }
 let safe_formula := mk_formula(safe_formula_lit)
 
-safe_atom_wf:
-| "(" x=safe_wf ")" { x }
-| x=LowerId { Var x }
+safe_formula_lit:
+| x=safe_atom { Lit x }
 
 let formula := mk_formula(formula_atom)
 

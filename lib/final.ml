@@ -42,7 +42,7 @@ let var_of_safe = function
   | Safe (Var x) -> x
   | _ -> assert false
 
-let replace_vars vars =
+let replace_vars vars x =
   let replace x =
     try map_var (fun x -> var_of_safe (List.assoc x vars)) x
     with Not_found -> x in
@@ -50,10 +50,9 @@ let replace_vars vars =
     | Has x -> Has (replace x)
     | Bin (b,x,y) -> Bin (b,replace x, replace y)
     | Other (s,x) -> Other (s, replace x) in
-  let lit = function
+  match x with
     | Stat (x,i) -> Stat (x, replace i)
-    | Dyn (b,x) -> Dyn (b, dyn x) in
-  fold_formula (fun x -> Lit (lit x)) (fun x -> Not x) (fun x y z -> Binop (x,y,z))
+    | Dyn (b,x) -> Dyn (b, dyn x)
 
 let rec negate_formula x =
   match x with
@@ -179,7 +178,7 @@ let fsafe_of_safe ~maxprof ~functions x =
     | Var _ | Apply _ ->
        assert false
     | Leaf x ->
-       FLeaf (remove_tlink ~maxprof ~functions x)
+       FLeaf (lit ~maxprof ~functions x)
     | Forall (x,g,a) ->
        quantif (fun g -> FForall (x, g, aux a)) g
     | Exists (x,g,a) ->

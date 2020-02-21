@@ -152,14 +152,6 @@ module Make (Manip : Manip) = struct
        let f = List.fold_left compose_subst x xs in
        compose_subst final f
 
-  let ti_formula env x =
-    let rec aux = function
-      | Lit x -> ti_lit env x
-      | Not x -> aux x
-      | Binop (_,x,y) ->
-         union (aux x) (aux y)
-    in aux x
-
   let try_unify x y =
     try unify x y
     with
@@ -168,7 +160,7 @@ module Make (Manip : Manip) = struct
   let ti_safe env x =
     let rec aux env = function
       | Leaf x ->
-         ty_safe,ti_formula env x
+         ty_safe,ti_lit env x
       | Var x ->
          ti_var env x, Subst.empty
       | Apply (x,y) ->

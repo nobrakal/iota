@@ -29,7 +29,7 @@ type 'a formula =
 
 type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
-  | Leaf of 'l formula
+  | Leaf of 'l
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
@@ -71,6 +71,9 @@ let fold_formula l u b =
     | Not y -> u (aux y)
     | Binop (x,y,z) -> b x (aux y) (aux z)
   in aux
+
+let map_formula f x =
+  fold_formula (fun x -> Lit (f x)) (fun x -> Not x) (fun a b c -> Binop (a,b,c)) x
 
 type parse_error =
   | UnboundDynamic of string
@@ -163,25 +166,21 @@ module SString = Set.Make(String)
 
 exception ParseError of parse_error
 
-let final_of_formula ~static ~dynamic =
-  let mk_lit (b,dyn) =
-    match dyn with
-    | Has _ | Bin _ -> Dyn (b,dyn)
-    | Other (s,x) ->
-       if SString.mem s dynamic then Dyn (b,dyn)
+let mk_lit ~static ~dynamic (b,dyn) =
+  match dyn with
+  | Has _ | Bin _ -> Dyn (b,dyn)
+  | Other (s,x) ->
+     if SString.mem s dynamic then Dyn (b,dyn)
+     else
+       if b
+       then raise (ParseError (UnboundDynamic s))
        else
-         if b
-         then raise (ParseError (UnboundDynamic s))
-         else
-           if SString.mem s static then Stat (s,x)
-           else raise (ParseError (UnboundSymbol s))
-  in
-  fold_formula (fun x -> Lit (mk_lit x))
-    (fun x -> Not x) (fun b x y -> Binop (b,x,y))
+         if SString.mem s static then Stat (s,x)
+         else raise (ParseError (UnboundSymbol s))
 
 let safe_of_parsed ~static ~dynamic =
   let rec aux = function
-    | Leaf x -> Leaf (final_of_formula ~static ~dynamic x)
+    | Leaf x -> Leaf (mk_lit ~static ~dynamic x)
     | Var x -> Var x
     | Apply (x,y) -> Apply (aux x, aux y)
     | Forall (a,l,x) -> Forall (a, l, aux x)
@@ -194,7 +193,7 @@ let safe_of_parsed ~static ~dynamic =
 let program_of_parsed ~static ~dynamic {vars; safe; ensure; maintain} =
   try
     let general (General (xs,x)) =
-      General (xs,(final_of_formula ~static ~dynamic x)) in
+      General (xs,(map_formula (mk_lit ~static ~dynamic) x)) in
     let vars =
       List.map
         (fun (Def (name,args,x)) -> Def (name, args, safe_of_parsed ~static ~dynamic x)) vars in
@@ -240,7 +239,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 
   let rec variables_of_safe = function
-    | Leaf f -> variables_of_formula f
+    | Leaf f -> variables_of_lit f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
