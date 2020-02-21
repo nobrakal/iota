@@ -76,7 +76,7 @@ safe_strong:
 | x=safe_apply { x }
 
 safe_apply:
-| x=safe_atom y=safe_atom { Apply (x,y) }
+| x=LowerId y=safe_atom { Apply (Var x,y) }
 | x=safe_apply y=safe_atom { Apply (x,y) }
 
 safe_atom:
