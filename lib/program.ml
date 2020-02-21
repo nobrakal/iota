@@ -142,12 +142,7 @@ let string_of_safe s p x =
        "forall " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
     | Exists (x,y,z) ->
        "exists " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
-    | Formula f -> auxf f
-  and auxf = function
-    | Lit x -> aux x
-    | Not x -> "not " ^ paren (auxf x)
-    | Binop (b,x,y) ->
-       paren (auxf x) ^ space (string_of_binop b) ^ paren (auxf y)
+    | Formula f -> string_of_formula aux f
   in aux x
 
 let print_safe s p x = print_endline (string_of_safe s p x)
