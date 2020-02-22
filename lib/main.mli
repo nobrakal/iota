@@ -10,9 +10,8 @@ type err =
 
 val print_err : err -> unit
 
+val config : Lexing.lexbuf -> Config.config
+
 val main :
-  maxprof:int ->
-  functions:string list ->
-  static:string list ->
-  dynamic:string list ->
+  Config.config ->
   Lexing.lexbuf -> (string Final.final_program, err) result

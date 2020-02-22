@@ -34,6 +34,11 @@ rule token = parse
   | "forall" { FORALL }
   | "exists" { EXISTS }
 
+  | "maxprof" { MAXPROF }
+  | "functions" { FUNCTIONS }
+  | "static" { STATIC }
+  | "dynamic" { DYNAMIC }
+
   | "=>"     { BIGARROW }
   | "->"     { ARROW }
   | "+"      { PLUS }
@@ -58,6 +63,7 @@ rule token = parse
   | "("      { LPAREN }
   | ")"      { RPAREN }
 
+  | digit+ as i { Int(int_of_string i) }
   | lowercase ident* as id    { LowerId(id) }
   | uppercase ident* as id    { UpperId(id) }
 

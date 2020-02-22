@@ -2,6 +2,8 @@ module Manip = Program.Manip(String)
 module Structure = Structure.Make(Manip)
 module Typecheck = Typecheck.Make(Manip)
 
+open Config
+
 type err =
   | Menhir
   | Type of Typecheck.type_error
@@ -20,12 +22,15 @@ let print_err x =
        "Structure: " ^ Structure.string_of_invalidity e
   in Printf.eprintf "%s\n" str
 
-let main ~maxprof ~functions ~static ~dynamic lexbuf =
+let config buf =
+  Parser.config Lexer.token buf
+
+let main config lexbuf =
   match try Some (Parser.program Lexer.token lexbuf) with Parser.Error -> None with
   | None -> Error Menhir
   | Some ast ->
-     let static = Program.SString.of_list static in
-     let dynamic = Program.SString.of_list dynamic in
+     let static = Program.SString.of_list config.static in
+     let dynamic = Program.SString.of_list config.dynamic in
      (* Transform the parsed AST into a "real one", knowing static and dynamic functions *)
      match Program.program_of_parsed ~static ~dynamic ast with
      | Error e -> Error (Parse e)
@@ -35,7 +40,7 @@ let main ~maxprof ~functions ~static ~dynamic lexbuf =
         | Some e -> Error (Type e)
         | None ->
            (* Inline every possible defintion of a valid program *)
-           let ast = Final.final_of_program ~maxprof ~functions ast in
+           let ast = Final.final_of_program ~maxprof:config.maxprof ~functions:config.functions ast in
            (* Verify that the structure is valid *)
            match Structure.validate_program ast with
            | Some e -> Error (Structure e)

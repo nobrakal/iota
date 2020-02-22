@@ -1,5 +1,6 @@
 %{ (* -*- tuareg -*- *)
    open Program
+   open Config
 
    let list_of_option x = Option.value ~default:[] x
 %}
@@ -28,8 +29,12 @@
 
 %token FORALL EXISTS
 
+(* Config tokens *)
+%token MAXPROF FUNCTIONS STATIC DYNAMIC
+
 (* Typed tokens *)
 %token<string> LowerId UpperId
+%token<int> Int
 
 (*** PRIORITY ***)
 %left LOR
@@ -38,7 +43,7 @@
 %right ARROW
 
 %start<string Program.parsed_program> program
-
+%start<Config.config> config
 %%
 
 (*** RULES ***)
@@ -114,3 +119,14 @@ let mk_formula(atom) :=
   | x=mk_formula(atom); LAND; y=mk_formula(atom); { Binop (And,x,y) }
   | x=mk_formula(atom); LOR; y=mk_formula(atom); { Binop (Or,x,y) }
   | x=mk_formula(atom); ARROW; y=mk_formula(atom); { Binop (Or,Not x,y) }
+
+(* Configuration *)
+config:
+| maxprof=econfig(MAXPROF,Int) functions=econfig(FUNCTIONS,list(LowerId))
+  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId))
+ {
+   {maxprof;functions;static;dynamic}
+ }
+
+let econfig(keyword,value) :=
+  | LET; keyword; EQ; x=value; SEMICOLON; { x }

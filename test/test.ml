@@ -1,13 +1,10 @@
-let functions = ["f";"g"]
-let maxprof = 2
-let static = ["E"]
-let dynamic = ["Active"; "Open"]
-
 let prefix = "tests/"
 
 let good = "good"
 
-let compile' x = Iota.Main.main ~maxprof ~functions ~static ~dynamic x
+let config = Iota.Main.config (Lexing.from_channel (open_in (prefix ^ "config.hiota")))
+
+let compile' x = Iota.Main.main config x
 
 let compile x =
   let chan = open_in x in
