@@ -1,31 +1,57 @@
 type binop = And | Or
 
+val string_of_binop : binop -> string
+
 type binpred = Eq | Link
+
+val string_of_binpred : binpred -> string
 
 type rbinpred =
   | TLink
   | B of binpred
+
+val string_of_rbinpred : rbinpred -> string
 
 type 'a var =
   | V of 'a
   | Parent of 'a var
   | Func of string * 'a var
 
+val string_of_var : ('a -> string) -> 'a var -> string
+val map_var : ('a -> 'b) -> 'a var -> 'b var
+val extract_var : 'a var -> 'a
+
 type ('a,'b) guard = 'b * 'a var * 'a var
+
+val string_of_guard : ('a -> string) -> ('b -> string) -> ('a,'b) guard -> string
 
 type ('a,'b) dynamic =
   | Has of 'a var
   | Bin of ('a,'b) guard
   | Other of string * 'a var
 
+val string_of_dynamic : ('a -> string) -> ('b -> string) -> ('a, 'b) dynamic -> string
+
 type ('a,'b) lit =
   | Dyn of bool * ('a,'b) dynamic
   | Stat of string * 'a var
+
+val string_of_lit : ('a -> string) -> ('b -> string) -> ('a, 'b) lit -> string
 
 type 'a formula =
   | Lit of 'a
   | Not of 'a formula
   | Binop of binop * 'a formula * 'a formula
+
+val string_of_formula : ('a -> string) -> 'a formula -> string
+val print_formula : ('a -> string) -> 'a formula -> unit
+
+val fold_formula :
+  ('a -> 'b) ->
+  ('b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
+
+val map_formula :
+  ('a -> 'b) -> 'a formula -> 'b formula
 
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
@@ -38,19 +64,6 @@ type ('a,'l) pre_safe =
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
-
-val map_var : ('a -> 'b) -> 'a var -> 'b var
-val extract_var : 'a var -> 'a
-
-val string_of_var : ('a -> string) -> 'a var -> string
-val string_of_binpred : binpred -> string
-val string_of_rbinpred : rbinpred -> string
-val string_of_guard : ('a -> string) -> ('b -> string) -> 'b * 'a var * 'a var -> string
-val string_of_dynamic : ('a -> string) -> ('b -> string) -> ('a, 'b) dynamic -> string
-val string_of_lit : ('a -> string) -> ('b -> string) -> ('a, 'b) lit -> string
-val string_of_binop : binop -> string
-val string_of_formula : ('a -> string) -> 'a formula -> string
-val print_formula : ('a -> string) -> 'a formula -> unit
 
 val string_of_safe :
   ('a -> string) -> ('b -> string) -> ('b, 'a) pre_safe -> string
@@ -80,13 +93,6 @@ type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program
 
 (** A well-formed program *)
 type 'a program = ('a, ('a, rbinpred) lit) pre_program
-
-val fold_formula :
-  ('a -> 'b) ->
-  ('b -> 'b) -> (binop -> 'b -> 'b -> 'b) -> 'a formula -> 'b
-
-val map_formula :
-  ('a -> 'b) -> 'a formula -> 'b formula
 
 type parse_error =
   | UnboundDynamic of string
