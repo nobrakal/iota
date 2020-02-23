@@ -37,8 +37,8 @@ let main config lexbuf =
      | Ok ast ->
         (* Typecheck with algorithm W *)
         match Typecheck.typecheck_program ast with
-        | Some e -> Error (Type e)
-        | None ->
+        | Error e -> Error (Type e)
+        | Ok ast ->
            (* Inline every possible defintion of a valid program *)
            let ast = Final.final_of_program ~maxprof:config.maxprof ~functions:config.functions ast in
            (* Verify that the structure is valid *)

@@ -209,6 +209,9 @@ module type Manip =
     val variables_of_lit : (S.elt,'a) lit -> S.t
     val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
+
+    val fv_of_safe : S.elt safe -> S.t
+    val fv_of_def : (S.elt, (S.elt, rbinpred) lit) def -> S.t
   end
 
 module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
@@ -238,4 +241,15 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
     | Formula f ->
        fold_formula variables_of_safe (fun x -> x) (fun _ -> S.union) f
+
+  let rec fv_of_safe = function
+    | Leaf f -> variables_of_lit f
+    | Var x -> S.singleton x
+    | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
+    | Forall (u,f,x) | Exists (u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
+    | Formula f ->
+       fold_formula fv_of_safe (fun x -> x) (fun _ -> S.union) f
+
+  let fv_of_def (Def (_,xs,x)) =
+    S.diff (fv_of_safe x) (S.of_list xs)
 end

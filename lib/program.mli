@@ -119,6 +119,9 @@ module type Manip =
     val variables_of_lit : (S.elt,'a) lit -> S.t
     val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
+
+    val fv_of_safe : S.elt safe -> S.t
+    val fv_of_def : (S.elt, (S.elt, rbinpred) lit) def -> S.t
   end
 
 module Manip(V : Set.OrderedType) : Manip with type t = V.t

@@ -18,7 +18,7 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : t program -> type_error option
+    val typecheck_program : t program -> (t program,type_error) result
   end
 
 

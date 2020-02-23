@@ -95,7 +95,7 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : t program -> type_error option
+    val typecheck_program : t program -> (t program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -179,22 +179,70 @@ module Make (Manip : Manip) = struct
          fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> ty_safe, union x y) f
     in aux env x
 
-  let type_of_def env (Def (name,args,body)) =
+  let type_of_def env args body =
     let args = List.map (fun x -> x,V (fresh_ty ())) args in
     let env = List.fold_left (fun acc (x,v) -> M.add x (scheme_of_mono v) acc) env args in
     let t,s = ti_safe env body in
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
-    name,t,s
+    t,s
 
-  let ti_let env def =
-    let name,t,s = type_of_def env def in
+  (* permutations *)
+  let distribute c l =
+    let rec insert acc1 acc2 = function
+      | [] -> acc2
+      | hd::tl ->
+         insert (hd::acc1) ((List.rev_append acc1 (hd::c::tl)) :: acc2) tl
+    in
+    insert [] [c::l] l
+
+  let rec permutation = function
+    | [] -> [[]]
+    | hd::tl ->
+       List.fold_left (fun acc x -> List.rev_append (distribute hd x) acc) [] (permutation tl)
+  (* *)
+
+  module GI = Guard_inference.Make(Manip)
+
+  (* We also quantify for things that can be functions symbol *)
+  let ti_let env (Def (name,args,body) as d) =
+    let rec try_permut xs =
+      match xs with
+      | [] -> Some []
+      | x::xs ->
+         Option.bind
+           (GI.infer_guard x xs body)
+           (fun e -> Option.map (fun xs -> (x,e) :: xs) (try_permut xs)) in
+    let newformula xs =
+      List.fold_left (fun acc (e,y) -> Exists (e,y,acc)) body xs in
+    let body,(t,s) =
+      try body,type_of_def env args body
+      with
+      | Te (UnboundVar _) as e ->
+         let fv = fv_of_def d in
+         let perm = permutation (Seq.fold_left (fun y x -> x::y) [] (S.to_seq fv)) in
+         let opt =
+           List.fold_left
+             (fun acc x ->
+               match acc with
+               | Some _ -> acc
+               | None ->
+                  Option.map
+                    (fun xs -> let n = newformula xs in (n,type_of_def env args n))
+                    (try_permut x)
+             ) None perm in
+         begin match opt with
+         | None -> raise e
+         | Some x -> x end
+      | x -> raise x in
     let t' = generalize (apply_subst_env s env) t in
     let env' = M.add name t' env in
-    s,env'
+    Def (name,args,body),s,env'
 
   let ti_lets env xs =
-    List.fold_left
-      (fun (s2,env) x -> let s1,env = ti_let env x in compose_subst s1 s2, env) (Subst.empty,env) xs
+    let ds,s,env = List.fold_left
+      (fun (ds,s2,env) x -> let d,s1,env = ti_let env x in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
+    in
+    List.rev ds,s,env
 
   let verify_safe env xs =
     let safe = T Safet in
@@ -204,12 +252,12 @@ module Make (Manip : Manip) = struct
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (T Litt)) env) fv env in
     List.iter (fun x -> let t = fst (ti_safe env x) in if t <> safe then raise (Te (WrongType (t,safe)))) xs
 
-  let typecheck_program {vars; safe; _} =
+  let typecheck_program ({vars; safe; _} as e) =
     let env = M.empty in
     try
-      let s,env = ti_lets env vars in
+      let vars,s,env = ti_lets env vars in
       let env = apply_subst_env s env in
-      verify_safe env safe; None
+      verify_safe env safe; Ok {e with vars}
     with
-    | Te x -> Some x
+    | Te x -> Error x
 end
