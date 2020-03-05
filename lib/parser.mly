@@ -123,10 +123,10 @@ let mk_formula(atom) :=
 (* Configuration *)
 config:
 | maxprof=econfig(MAXPROF,Int) functions=econfig(FUNCTIONS,list(LowerId))
-  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId))
+  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId)) EOF
  {
    {maxprof;functions;static;dynamic}
  }
 
 let econfig(keyword,value) :=
-  | LET; keyword; EQ; x=value; SEMICOLON; { x }
+  | LET; keyword; EQ; x=value; { x }

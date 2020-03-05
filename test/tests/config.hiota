@@ -1,4 +1,4 @@
-let maxprof = 2;
-let functions = f g;
-let static = E;
-let dynamic = Active Open;
+let maxprof = 2
+let functions = f g
+let static = E
+let dynamic = Active Open
