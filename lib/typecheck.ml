@@ -2,19 +2,19 @@ open Program
 
 module Subst = Map.Make(String)
 
-type base_ty = Safet | Litt
-
+(** Type of monomorphic types *)
 type monoty =
-  | V of string
-  | T of base_ty
-  | Arrow of (monoty * monoty)
+  | V of string (** Type variable *)
+  | T of string (** Base types *)
+  | Arrow of (monoty * monoty) (** Arrow *)
+
+(* TODO Forbid strange types name from parsing *)
+let safet = "safet"
+let litt = "litt"
 
 let rec string_of_monoty = function
-  | V x -> x
-  | T x ->
-     begin match x with
-     | Safet -> "Safe"
-     | Litt -> "Lit" end
+  | V x -> "'" ^ x
+  | T x -> x
   | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
 
 type scheme = S of string list * monoty
@@ -78,8 +78,8 @@ let unify x y =
     | _ -> raise Exit
   in aux (x,y)
 
-let ty_safe = T Safet
-let ty_lit = T Litt
+let ty_safe = T safet
+let ty_lit = T litt
 
 let applys xs fv =
   List.fold_right (fun x acc -> Arrow (x,acc)) xs fv
@@ -245,12 +245,15 @@ module Make (Manip : Manip) = struct
     List.rev ds,s,env
 
   let verify_safe env xs =
-    let safe = T Safet in
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
-    let env = S.fold (fun k env -> M.add k (scheme_of_mono (T Litt)) env) fv env in
-    List.iter (fun x -> let t = fst (ti_safe env x) in if t <> safe then raise (Te (WrongType (t,safe)))) xs
+    let env = S.fold (fun k env -> M.add k (scheme_of_mono ty_lit) env) fv env in
+    let aux x =
+      let t = fst (ti_safe env x) in
+      if t <> ty_safe
+      then raise (Te (WrongType (t,ty_safe))) in
+    List.iter aux xs
 
   let typecheck_program ({vars; safe; _} as e) =
     let env = M.empty in

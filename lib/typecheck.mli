@@ -1,11 +1,10 @@
 open Program
 
-type base_ty = Safet | Litt
-
+(** Type of monomorphic types *)
 type monoty =
-  | V of string
-  | T of base_ty
-  | Arrow of (monoty * monoty)
+  | V of string (** Type variable *)
+  | T of string (** Base types *)
+  | Arrow of (monoty * monoty) (** Arrow *)
 
 module type Typecheck =
   sig
