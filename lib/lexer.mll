@@ -31,6 +31,8 @@ rule token = parse
   | "ensure" { ENSURE }
   | "let"    { LET }
 
+  | "type" { TYPE }
+
   | "forall" { FORALL }
   | "exists" { EXISTS }
 
@@ -44,6 +46,9 @@ rule token = parse
   | "+"      { PLUS }
   | "&&"     { LAND }
   | "||"     { LOR }
+
+  | "|"    { GUARD }
+  | "of"   { OF }
 
   | ";"      { SEMICOLON }
   | ","      { COMMA }

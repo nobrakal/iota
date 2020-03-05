@@ -29,6 +29,8 @@
 
 %token FORALL EXISTS
 
+%token TYPE GUARD OF
+
 (* Config tokens *)
 %token MAXPROF FUNCTIONS STATIC DYNAMIC
 
@@ -123,10 +125,16 @@ let mk_formula(atom) :=
 (* Configuration *)
 config:
 | maxprof=econfig(MAXPROF,Int) functions=econfig(FUNCTIONS,list(LowerId))
-  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId)) EOF
+  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId))
+  types = list(type_elem) EOF
  {
-   {maxprof;functions;static;dynamic}
+   {maxprof;functions;static;dynamic;types}
  }
 
 let econfig(keyword,value) :=
   | LET; keyword; EQ; x=value; { x }
+
+let type_elem :=
+  | TYPE; x=LowerId; EQ; xs=separated_nonempty_list(GUARD,accessor); {(x,xs)}
+
+accessor: x=LowerId OF y=LowerId {(x,y)}
