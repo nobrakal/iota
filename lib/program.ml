@@ -3,7 +3,7 @@ type binop = And | Or
 type binpred = Eq | Link
 
 type rbinpred =
-  | TLink
+  | TLink of string * string
   | B of binpred
 
 type 'a var =
@@ -98,7 +98,7 @@ let string_of_binpred = function
   | Eq -> "Eq"
 
 let string_of_rbinpred = function
-  | TLink -> "TLink"
+  | TLink (s1,s2)-> "TLink<" ^ s1 ^ "," ^ s2 ^ ">"
   | B b -> string_of_binpred b
 
 let string_of_guard s f (b,x,y) =

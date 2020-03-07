@@ -40,8 +40,7 @@ let main config lexbuf =
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)
-           let functions = List.(concat (map (fun (_,xs) -> map fst xs) config.types)) in
-           let ast = Final.final_of_program ~maxprof:config.maxprof ~functions ast in
+           let ast = Final.final_of_program ~maxprof:config.maxprof ~types:config.types ast in
            (* Verify that the structure is valid *)
            match Structure.validate_program ast with
            | Some e -> Error (Structure e)

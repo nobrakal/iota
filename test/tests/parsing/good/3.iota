@@ -1,5 +1,5 @@
-forall x TLink(x,y) -> (E(x))
+forall x TLink<mol,mol>(x,y) -> (E(x))
 
 ensure
 
-TLink(x,y) -> Eq(x,y) -> TLink(y,z) => E(y)
+TLink<mol,mol>(x,y) -> Eq(x,y) -> TLink<mol,mol>(y,z) => E(y)

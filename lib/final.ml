@@ -117,7 +117,7 @@ let dyn = function
   | Has x -> Ok (Has x)
   | Other (s,x) -> Ok (Other (s,x))
   | Bin (B x, a, b) -> Ok (Bin (x,a,b))
-  | Bin (TLink, a, b) -> Error (a,b)
+  | Bin (TLink (s1,s2), a, b) -> Error ((s1,s2),a,b)
 
 let lit' = function
   | Stat (s,x) -> Ok (Stat (s,x))
@@ -133,9 +133,14 @@ let rec iter_bind n x f =
   then x
   else iter_bind (n-1) (bind x f) f
 
-let fold_paths ~maxprof ~functions fold link x y =
+let fold_paths ~maxprof ~types fold link x y =
+  let link x y = link (fst x) (fst y) in
   let paths x =
-    iter_bind maxprof [x] (fun x -> List.map (fun f -> Func (f,x)) functions) in
+    iter_bind maxprof [x]
+      (fun (x,xt) ->
+        match List.assoc_opt xt types with
+        | Some xs -> List.map (fun (f,ft) -> Func (f,x),ft) xs
+        | None -> failwith "TODO: unknown type") in
   match paths x, paths y with
   | [],_ | _,[] -> assert false
   | x::xs,y::ys ->
@@ -145,31 +150,31 @@ let fold_paths ~maxprof ~functions fold link x y =
          List.fold_left (aux x) acc (y::ys))
        (List.fold_left (aux x) (link x y) ys) xs
 
-let lit ~maxprof ~functions x =
+let lit ~maxprof ~types x =
   match lit' x with
   | Ok x -> Lit x
-  | Error (b, (x,y)) ->
+  | Error (b, ((s1,s2),x,y)) ->
      let link x y = Lit (Dyn (b,(Bin (Link, x, y)))) in
      let fold a b = Binop (Or,a,b) in
-     fold_paths ~maxprof ~functions fold link x y
+     fold_paths ~maxprof ~types fold link (x,s1) (y,s2)
 
-let remove_tlink ~maxprof ~functions f =
-  fold_formula (lit ~maxprof ~functions) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
+let remove_tlink ~maxprof ~types f =
+  fold_formula (lit ~maxprof ~types) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
-let fsafe_of_safe ~maxprof ~functions x =
+let fsafe_of_safe ~maxprof ~types x =
   let quantif f g =
     match g with
     | (B g,x,y) -> f (g,x,y)
-    | (TLink,x,y) ->
+    | (TLink (s1,s2),x,y) ->
        let link x y = f (Link, x, y) in
        let fold a b = FBinop (And, a, b) in
-       fold_paths ~maxprof ~functions fold link x y in
+       fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
   let rec aux x =
     match x with
     | Var _ | Apply _ ->
        assert false
     | Leaf y ->
-       fold_formula (fun x -> FLeaf (E,x)) negate (fun a b c -> FBinop (a,b,c)) (lit ~maxprof ~functions y)
+       fold_formula (fun x -> FLeaf (E,x)) negate (fun a b c -> FBinop (a,b,c)) (lit ~maxprof ~types y)
     | Forall (x,g,a) ->
        quantif (fun g -> FForall (x, g, aux a)) g
     | Exists (x,g,a) ->
@@ -187,24 +192,24 @@ let conj xs =
         (fun acc x -> bind acc (fun ys -> fmap (fun y -> y::ys) x))
         ([[]]) xs
 
-let remove_tlink_general ~maxprof ~functions (General (xs,f)) =
-  let f = remove_tlink ~maxprof ~functions f in
+let remove_tlink_general ~maxprof ~types (General (xs,f)) =
+  let f = remove_tlink ~maxprof ~types f in
   let fold = List.append in
   let link x y = [(Link,x,y)] in
   let aux x =
     match x with
     | (B b, x, y) -> [(b,x,y)]
-    | (TLink, x, y) -> fold_paths ~maxprof ~functions fold link x y in
+    | (TLink (s1,s2), x, y) -> fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
   let xs = conj (List.map aux xs) in
   List.map (fun x -> General (x, f)) xs
 
-let final_of_program ~maxprof ~functions ({vars;safe;ensure;maintain} : string program) : string final_program =
+let final_of_program ~maxprof ~types ({vars;safe;ensure;maintain} : string program) : string final_program =
   let vars = inline_vars_in_vars vars in
   let fsafe =
     List.map
-      (fun x -> fsafe_of_safe ~maxprof ~functions (safe_of_nf (normal_form vars x))) safe in
-  let fensure = bind ensure (fun x -> remove_tlink_general ~maxprof ~functions x) in
-  let fmaintain = bind maintain (fun x -> remove_tlink_general ~maxprof ~functions x) in
+      (fun x -> fsafe_of_safe ~maxprof ~types (safe_of_nf (normal_form vars x))) safe in
+  let fensure = bind ensure (fun x -> remove_tlink_general ~maxprof ~types x) in
+  let fmaintain = bind maintain (fun x -> remove_tlink_general ~maxprof ~types x) in
   {fsafe; fensure; fmaintain}
 
 let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =

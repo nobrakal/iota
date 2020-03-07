@@ -2,4 +2,5 @@ let maxprof = 2
 let static = E
 let dynamic = Active Open
 
+type site
 type mol = m of mol | f of site | g of site

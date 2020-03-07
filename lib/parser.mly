@@ -106,7 +106,7 @@ dyn:
 guard:
 | EQQ "(" x=term "," y=term ")" { (B Eq,x,y) }
 | LINK "(" x=term "," y=term ")" { (B Link,x,y) }
-| TLINK "(" x=term "," y=term ")" { (TLink,x,y) }
+| TLINK "<" s1=LowerId "," s2=LowerId ">" "(" x=term "," y=term ")" { (TLink (s1,s2),x,y) }
 
 term:
 | x=LowerId { V x }
@@ -136,6 +136,7 @@ let econfig(keyword,value) :=
   | LET; keyword; EQ; x=value; { x }
 
 let type_elem :=
+  | TYPE; x=LowerId; {(x,[])}
   | TYPE; x=LowerId; EQ; xs=separated_nonempty_list(GUARD,accessor); {(x,xs)}
 
 accessor: x=LowerId OF y=LowerId {(x,y)}

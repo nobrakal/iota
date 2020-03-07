@@ -7,7 +7,7 @@ type binpred = Eq | Link
 val string_of_binpred : binpred -> string
 
 type rbinpred =
-  | TLink
+  | TLink of string * string
   | B of binpred
 
 val string_of_rbinpred : rbinpred -> string

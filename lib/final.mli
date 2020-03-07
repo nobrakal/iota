@@ -21,7 +21,7 @@ type 'a final_program =
 (** Transform a program that typecheck into a final one *)
 val final_of_program :
   maxprof:int ->
-  functions:string list ->
+  types:(Sum_types.ty_dec list) ->
   string Program.program -> string final_program
 
 val string_of_final : string final_program -> string
