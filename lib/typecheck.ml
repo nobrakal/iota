@@ -93,7 +93,9 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
+    val typecheck_program :
+      predicates:('a * string * string) list ->
+      types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -159,9 +161,17 @@ module Make (Manip : Manip) = struct
        | Bin (_,x,y) -> [x; y]
        | Other (_,x) -> [x]
 
-  let ti_lit ~types env x =
-    let vars = variables_of_lit x in
-    List.fold_left (fun acc v -> Subst.union left_bias (snd (ti_var ~types env v)) acc) Subst.empty vars
+  let verif_pred ~predicates xs =
+    function
+    | Stat (s,_) | Dyn (_,Other (s,_)) ->
+       let _,_,ty = List.find (fun (_,n,_) -> s = n) predicates in
+       unify (fst (List.hd xs)) (Litt ty)
+    | _ -> Subst.empty
+
+  let ti_lit ~predicates ~types env x =
+    let vars = List.map (ti_var ~types env) (variables_of_lit x) in
+    let subst = List.fold_left (fun acc v -> Subst.union left_bias (snd v) acc) Subst.empty vars in
+    Subst.union left_bias (verif_pred ~predicates vars x) subst
 
   let union x y =
     let x' = Subst.fold (fun x _ y -> SString.add x y) x SString.empty in
@@ -181,10 +191,10 @@ module Make (Manip : Manip) = struct
     with
       Exit -> raise (Te (WrongType (x, y)))
 
-  let ti_safe ~types env x =
+  let ti_safe ~predicates ~types env x =
     let rec aux env = function
       | Leaf x ->
-         ty_safe,ti_lit ~types env x
+         ty_safe,ti_lit ~predicates ~types env x
       | Var x ->
          let t =
            match M.find_opt x env with
@@ -199,7 +209,7 @@ module Make (Manip : Manip) = struct
          apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
       | Exists (x,u,b) | Forall (x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
-         let subst = ti_lit ~types nenv (Dyn (false,Bin u)) in
+         let subst = ti_lit ~predicates ~types nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
          let s = try_unify t ty_safe in
          ty_safe,union s (union subst b)
@@ -207,10 +217,10 @@ module Make (Manip : Manip) = struct
          fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> ty_safe, union x y) f
     in aux env x
 
-  let type_of_def ~types env args body =
+  let type_of_def ~predicates ~types env args body =
     let args = List.map (fun x -> x,fresh_ty ()) args in
     let env = List.fold_left (fun acc (x,v) -> M.add x (scheme_of_mono v) acc) env args in
-    let t,s = ti_safe ~types env body in
+    let t,s = ti_safe ~predicates ~types env body in
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
     t,s
 
@@ -232,7 +242,7 @@ module Make (Manip : Manip) = struct
   module GI = Guard_inference.Make(Manip)
 
   (* We also quantify for things that can be functions symbol *)
-  let ti_let ~types env (Def (name,args,body) as d) =
+  let ti_let ~predicates ~types env (Def (name,args,body) as d) =
     let rec try_permut xs =
       match xs with
       | [] -> Some []
@@ -243,7 +253,7 @@ module Make (Manip : Manip) = struct
     let newformula xs =
       List.fold_left (fun acc (e,y) -> Exists (e,y,acc)) body xs in
     let body,(t,s) =
-      try body,type_of_def ~types env args body
+      try body,type_of_def ~predicates ~types env args body
       with
       | Te (UnboundVar _) as e ->
          let fv = fv_of_def d in
@@ -255,7 +265,7 @@ module Make (Manip : Manip) = struct
                | Some _ -> acc
                | None ->
                   Option.map
-                    (fun xs -> let n = newformula xs in (n,type_of_def ~types env args n))
+                    (fun xs -> let n = newformula xs in (n,type_of_def ~predicates ~types env args n))
                     (try_permut x)
              ) None perm in
          begin match opt with
@@ -266,29 +276,32 @@ module Make (Manip : Manip) = struct
     let env' = M.add name t' env in
     Def (name,args,body),s,env'
 
-  let ti_lets ~types env xs =
-    let ds,s,env = List.fold_left
-      (fun (ds,s2,env) x -> let d,s1,env = ti_let ~types env x in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
+  let ti_lets ~predicates ~types env xs =
+    let ds,s,env =
+      List.fold_left
+        (fun (ds,s2,env) x ->
+          let d,s1,env = ti_let ~predicates ~types env x
+          in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
     in
     List.rev ds,s,env
 
-  let verify_safe ~types env xs =
+  let verify_safe ~predicates ~types env xs =
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
-      let t = fst (ti_safe ~types env x) in
+      let t = fst (ti_safe ~predicates ~types env x) in
       if t <> ty_safe
       then raise (Te (WrongType (t,ty_safe))) in
     List.iter aux xs
 
-  let typecheck_program ~types ({vars; safe; _} as e) =
+  let typecheck_program ~predicates ~types ({vars; safe; _} as e) =
     let env = M.empty in
     try
-      let vars,s,env = ti_lets ~types env vars in
+      let vars,s,env = ti_lets ~predicates ~types env vars in
       let env = apply_subst_env s env in
-      verify_safe ~types env safe; Ok {e with vars}
+      verify_safe ~predicates ~types env safe; Ok {e with vars}
     with
     | Te x -> Error x
 end

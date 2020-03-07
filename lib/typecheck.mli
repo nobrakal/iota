@@ -18,7 +18,9 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
+    val typecheck_program :
+      predicates:('a * string * string) list ->
+      types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
   end
 
 

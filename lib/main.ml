@@ -41,7 +41,7 @@ let main config lexbuf =
      | Error e -> Error (Parse e)
      | Ok ast ->
         (* Typecheck with algorithm W *)
-        match Typecheck.typecheck_program ~types:config.types ast with
+        match Typecheck.typecheck_program ~predicates:config.predicates ~types:config.types ast with
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)

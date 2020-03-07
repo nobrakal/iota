@@ -1,5 +1,5 @@
-let tt x = E(x.h)
-let tr x = E(x.f)
+let tt x = E(x.m)
+let tr x = E(x.m)
 
 in
 
