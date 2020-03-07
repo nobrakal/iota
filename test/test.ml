@@ -1,6 +1,14 @@
 let prefix = "tests/"
 
 let good = "good"
+let bad = "bad"
+
+type ttt = Parsing | Typechecking | Structure
+
+let string_of_ttt = function
+  | Parsing -> "parsing"
+  | Typechecking -> "typechecking"
+  | Structure -> "structure"
 
 let config = Iota.Main.config (Lexing.from_channel (open_in (prefix ^ "config.hiota")))
 
@@ -17,6 +25,13 @@ let compile_good x =
   | Ok _ -> true
   | Error _ -> false
 
+let compile_bad ttt x =
+  match compile x,ttt with
+  | Error (Iota.Main.Type _), Typechecking
+    | Error (Iota.Main.Parse _ | Iota.Main.Menhir), Parsing
+    | Error (Iota.Main.Structure _), Structure -> true
+  | _ -> false
+
 let tt = Alcotest.testable (Fmt.of_to_string (Iota.Final.string_of_final)) ( = )
 
 let reentrant_compile x () =
@@ -32,29 +47,32 @@ let check_pred p x () = Alcotest.(check bool) x true (p x)
 
 let list_of_files x = Array.to_list (Sys.readdir x)
 
-let check_compile_goods dgood =
+let check_dir suffix f dir =
   let aux x =
     let open Alcotest in
-    test_case (x ^ " " ^ good) `Quick (check_pred compile_good (dgood ^ x))
-  in List.map aux (list_of_files dgood)
-
-let check_reentrant_compil dgood =
-  let aux x =
-    let open Alcotest in
-    test_case (x ^ " " ^ good) `Quick (reentrant_compile (dgood ^ x))
-  in List.map aux (list_of_files dgood)
+    test_case (x ^ " " ^ suffix) `Quick (f (dir ^ x))
+  in List.map aux (list_of_files dir)
 
 let test_good_cases f c =
-  let dir = prefix ^ c in
-  let dgood = dir ^ "good/" in
-  f dgood
+  f (prefix ^ c ^ "good/")
 
-let test_dir dir =
-  let dir' = dir ^ "/" in
+let test_bad_cases f c =
+  f (prefix ^ c ^ "bad/")
+
+let test_dir ttt =
+  let dir = string_of_ttt ttt in
+  let dir' =  dir ^ "/" in
+  let check_compile_goods =
+    check_dir good (check_pred compile_good) in
+  let check_reentrant_compil =
+    check_dir good reentrant_compile in
+  let check_bad =
+    check_dir bad (check_pred (compile_bad ttt)) in
   [ dir, test_good_cases check_compile_goods dir'
-  ; dir ^ " reentrant", test_good_cases check_reentrant_compil dir' ]
+  ; dir ^ " reentrant", test_good_cases check_reentrant_compil dir'
+  ; dir ^ " bad", test_bad_cases check_bad dir']
 
 let () =
   let open Alcotest in
   run "Iota"
-    (test_dir "parsing" @ test_dir "typechecking" @ test_dir "structure")
+    (test_dir Parsing @ test_dir Typechecking @ test_dir Structure)

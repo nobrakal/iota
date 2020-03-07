@@ -4,3 +4,4 @@ let dynamic = Active Open
 
 type site
 type mol = m of mol | f of site | g of site
+type mol2 = h of site

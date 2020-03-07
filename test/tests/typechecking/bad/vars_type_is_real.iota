@@ -1,0 +1,6 @@
+let tt x = E(x.h)
+let tr x = E(x.f)
+
+in
+
+(tt x) && (tr x)
