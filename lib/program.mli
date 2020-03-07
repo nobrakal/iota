@@ -14,7 +14,7 @@ val string_of_rbinpred : rbinpred -> string
 
 type 'a var =
   | V of 'a
-  | Parent of 'a var
+  | Parent of string * string * 'a var
   | Func of string * 'a var
 
 val string_of_var : ('a -> string) -> 'a var -> string

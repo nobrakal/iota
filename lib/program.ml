@@ -8,7 +8,7 @@ type rbinpred =
 
 type 'a var =
   | V of 'a
-  | Parent of 'a var
+  | Parent of string * string * 'a var (* string for the expected type *)
   | Func of string * 'a var
 
 type ('a,'b) guard = 'b * 'a var * 'a var
@@ -55,14 +55,14 @@ type 'a program = ('a, ('a, rbinpred) lit) pre_program
 let map_var f x =
   let rec aux = function
     | V x -> V (f x)
-    | Parent x -> Parent (aux x)
+    | Parent (s1,s2,x) -> Parent (s1,s2,aux x)
     | Func (s,x) -> Func (s, aux x)
   in aux x
 
 let rec extract_var x =
   match x with
   | V x -> x
-  | Parent x -> extract_var x
+  | Parent (_,_,x) -> extract_var x
   | Func (_,x) -> extract_var x
 
 let fold_formula l u b =
@@ -89,7 +89,7 @@ let space s = " " ^ s ^ " "
 let string_of_var s =
   let rec aux = function
   | V x -> s x
-  | Parent x -> "parent" ^ paren (aux x)
+  | Parent (s1,s2,x) -> "parent<" ^ s1  ^ "," ^ s2 ^ ">" ^ paren (aux x)
   | Func (s,x) -> aux x ^ "." ^ s
   in aux
 

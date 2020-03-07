@@ -5,16 +5,14 @@ module Subst = Map.Make(String)
 (** Type of monomorphic types *)
 type monoty =
   | V of string (** Type variable *)
-  | T of string (** Base types *)
+  | Safet (** A safe expression *)
+  | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
-
-(* TODO Forbid strange types name from parsing *)
-let safet = "safet"
-let litt = "litt"
 
 let rec string_of_monoty = function
   | V x -> "'" ^ x
-  | T x -> x
+  | Safet -> "Safe"
+  | Litt l -> "Lit " ^ l
   | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
 
 type scheme = S of string list * monoty
@@ -23,10 +21,10 @@ let internal_counter = ref 0
 
 let fresh_ty () =
   internal_counter := !internal_counter + 1;
-  "_" ^ string_of_int ! internal_counter
+  V ("_" ^ string_of_int ! internal_counter)
 
 let rec fv_of_ty = function
-  | T _ -> SString.empty
+  | Litt _ | Safet -> SString.empty
   | V x -> SString.singleton x
   | Arrow (x,y) -> SString.union (fv_of_ty x) (fv_of_ty y)
 
@@ -37,7 +35,7 @@ let scheme_of_mono x = S ([],x)
 
 let apply_subst_ty subst =
   let rec aux = function
-    | T _ as t -> t
+    | Litt _ | Safet as t -> t
     | Arrow (x,y) -> Arrow (aux x, aux y)
     | V x as t ->
        match Subst.find_opt x subst with
@@ -55,7 +53,7 @@ let compose_subst s1 s2 =
   Subst.union left_bias (Subst.map (apply_subst_ty s1) s2) s1
 
 let instanciate (S (xs,x)) =
-  let subst = List.fold_left (fun s k -> Subst.add k (V (fresh_ty ())) s) Subst.empty xs in
+  let subst = List.fold_left (fun s k -> Subst.add k (fresh_ty ()) s) Subst.empty xs in
   apply_subst_ty subst x
 
 let bindvar u t =
@@ -73,13 +71,13 @@ let unify x y =
        let s1 = aux (x1,y1) in
        let s2 = aux (apply_subst_ty s1 x2, apply_subst_ty s1 y2) in
        compose_subst s1 s2
-    | T x, T y when x = y -> Subst.empty
+    | Safet, Safet -> Subst.empty
+    | Litt x, Litt y when x = y -> Subst.empty
     | V x,y | y, V x -> bindvar x y
     | _ -> raise Exit
   in aux (x,y)
 
-let ty_safe = T safet
-let ty_lit = T litt
+let ty_safe = Safet
 
 let applys xs fv =
   List.fold_right (fun x acc -> Arrow (x,acc)) xs fv
@@ -95,7 +93,7 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : t program -> (t program,type_error) result
+    val typecheck_program : types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -129,15 +127,41 @@ module Make (Manip : Manip) = struct
     let vars = SString.fold (fun x xs -> x::xs) vars [] in
     S (vars,t)
 
-  let ti_var env x =
-    match M.find_opt x env with
-    | None -> raise (Te (UnboundVar x))
-    | Some t -> instanciate t
+  let ti_var ~types env x =
+    let rec aux x =
+      match x with
+      | Program.V x ->
+         begin match M.find_opt x env with
+         | None -> raise (Te (UnboundVar x))
+         | Some t -> instanciate t,Subst.empty end
+      | Func (f,x) ->
+         let tx,sx = aux x in
+         begin match List.find_opt (fun (_,xs) -> List.exists (fun (n,_) -> f = n) xs) types with
+         | Some (start,xs) ->
+            let endt = List.assoc f xs in
+            let s = unify tx (Litt start) in
+            (Litt endt),(compose_subst s sx)
+         | None -> failwith "todo: unbound function" end
+      | Parent (startt,endt,x) ->
+         let tx,sx = aux x in
+         begin match List.find_opt (fun (x,xs) -> x=startt && List.exists (fun (_,n) -> endt = n) xs) types with
+         | Some _ ->
+            let s = unify tx (Litt endt) in
+            (Litt startt),(compose_subst s sx)
+         | None -> failwith "Undefined parent" end
+    in aux x
 
-  let ti_lit env x =
-    let vars = to_list (variables_of_lit x) in
-    let vars = List.map (ti_var env) vars in
-    List.fold_left (fun acc v -> Subst.union left_bias (unify v ty_lit) acc) Subst.empty vars
+  let variables_of_lit = function
+    | Stat (_,x) -> [x]
+    | Dyn (_,x) ->
+       match x with
+       | Has x -> [x]
+       | Bin (_,x,y) -> [x; y]
+       | Other (_,x) -> [x]
+
+  let ti_lit ~types env x =
+    let vars = variables_of_lit x in
+    List.fold_left (fun acc v -> Subst.union left_bias (snd (ti_var ~types env v)) acc) Subst.empty vars
 
   let union x y =
     let x' = Subst.fold (fun x _ y -> SString.add x y) x SString.empty in
@@ -157,21 +181,25 @@ module Make (Manip : Manip) = struct
     with
       Exit -> raise (Te (WrongType (x, y)))
 
-  let ti_safe env x =
+  let ti_safe ~types env x =
     let rec aux env = function
       | Leaf x ->
-         ty_safe,ti_lit env x
+         ty_safe,ti_lit ~types env x
       | Var x ->
-         ti_var env x, Subst.empty
+         let t =
+           match M.find_opt x env with
+           | None -> raise (Te (UnboundVar x))
+           | Some t -> instanciate t in
+         t, Subst.empty
       | Apply (x,y) ->
-         let tv = V (fresh_ty ()) in
+         let tv = fresh_ty () in
          let t,s = aux env x in
          let t',s' = aux (M.map (apply_subst_scheme s) env) y in
          let s'' = unify (apply_subst_ty s' t) (Arrow (t', tv)) in
          apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
       | Exists (x,u,b) | Forall (x,u,b) ->
-         let nenv = M.add x (scheme_of_mono ty_lit) env in
-         let subst = ti_lit nenv (Dyn (false,Bin u)) in
+         let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
+         let subst = ti_lit ~types nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
          let s = try_unify t ty_safe in
          ty_safe,union s (union subst b)
@@ -179,10 +207,10 @@ module Make (Manip : Manip) = struct
          fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> ty_safe, union x y) f
     in aux env x
 
-  let type_of_def env args body =
-    let args = List.map (fun x -> x,V (fresh_ty ())) args in
+  let type_of_def ~types env args body =
+    let args = List.map (fun x -> x,fresh_ty ()) args in
     let env = List.fold_left (fun acc (x,v) -> M.add x (scheme_of_mono v) acc) env args in
-    let t,s = ti_safe env body in
+    let t,s = ti_safe ~types env body in
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
     t,s
 
@@ -204,7 +232,7 @@ module Make (Manip : Manip) = struct
   module GI = Guard_inference.Make(Manip)
 
   (* We also quantify for things that can be functions symbol *)
-  let ti_let env (Def (name,args,body) as d) =
+  let ti_let ~types env (Def (name,args,body) as d) =
     let rec try_permut xs =
       match xs with
       | [] -> Some []
@@ -215,7 +243,7 @@ module Make (Manip : Manip) = struct
     let newformula xs =
       List.fold_left (fun acc (e,y) -> Exists (e,y,acc)) body xs in
     let body,(t,s) =
-      try body,type_of_def env args body
+      try body,type_of_def ~types env args body
       with
       | Te (UnboundVar _) as e ->
          let fv = fv_of_def d in
@@ -227,7 +255,7 @@ module Make (Manip : Manip) = struct
                | Some _ -> acc
                | None ->
                   Option.map
-                    (fun xs -> let n = newformula xs in (n,type_of_def env args n))
+                    (fun xs -> let n = newformula xs in (n,type_of_def ~types env args n))
                     (try_permut x)
              ) None perm in
          begin match opt with
@@ -238,29 +266,29 @@ module Make (Manip : Manip) = struct
     let env' = M.add name t' env in
     Def (name,args,body),s,env'
 
-  let ti_lets env xs =
+  let ti_lets ~types env xs =
     let ds,s,env = List.fold_left
-      (fun (ds,s2,env) x -> let d,s1,env = ti_let env x in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
+      (fun (ds,s2,env) x -> let d,s1,env = ti_let ~types env x in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
     in
     List.rev ds,s,env
 
-  let verify_safe env xs =
+  let verify_safe ~types env xs =
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
-    let env = S.fold (fun k env -> M.add k (scheme_of_mono ty_lit) env) fv env in
+    let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
-      let t = fst (ti_safe env x) in
+      let t = fst (ti_safe ~types env x) in
       if t <> ty_safe
       then raise (Te (WrongType (t,ty_safe))) in
     List.iter aux xs
 
-  let typecheck_program ({vars; safe; _} as e) =
+  let typecheck_program ~types ({vars; safe; _} as e) =
     let env = M.empty in
     try
-      let vars,s,env = ti_lets env vars in
+      let vars,s,env = ti_lets ~types env vars in
       let env = apply_subst_env s env in
-      verify_safe env safe; Ok {e with vars}
+      verify_safe ~types env safe; Ok {e with vars}
     with
     | Te x -> Error x
 end

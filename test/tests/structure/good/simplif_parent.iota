@@ -1,5 +1,5 @@
-E(parent(x.f))
+E(parent<mol,site>(x.f))
 
 ensure
 
-Eq(parent(x.g),parent(x.f)) => E(x)
+Eq(parent<mol,site>(x.g),parent<mol,site>(x.f)) => E(x)

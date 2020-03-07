@@ -3,7 +3,8 @@ open Program
 (** Type of monomorphic types *)
 type monoty =
   | V of string (** Type variable *)
-  | T of string (** Base types *)
+  | Safet (** A safe expression *)
+  | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
 
 module type Typecheck =
@@ -17,7 +18,7 @@ module type Typecheck =
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
-    val typecheck_program : t program -> (t program,type_error) result
+    val typecheck_program : types:(Sum_types.ty_dec list) -> t program -> (t program,type_error) result
   end
 
 

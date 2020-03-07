@@ -17,6 +17,7 @@
 %token PARENT HAS LINK TLINK EQQ
 %token NOT
 %token EQ
+%token LCHEVRON "<" RCHEVRON ">"
 
 %token ARROW SEMICOLON ";" COMMA ","
 %token BIGARROW
@@ -32,7 +33,7 @@
 %token TYPE GUARD OF
 
 (* Config tokens *)
-%token MAXPROF FUNCTIONS STATIC DYNAMIC
+%token MAXPROF STATIC DYNAMIC
 
 (* Typed tokens *)
 %token<string> LowerId UpperId
@@ -109,7 +110,7 @@ guard:
 
 term:
 | x=LowerId { V x }
-| PARENT "(" x=term ")" { Parent x }
+| PARENT "<" s1=LowerId "," s2=LowerId ">" "(" x=term ")" { Parent (s1,s2,x) }
 | x=term "." y=LowerId { Func (y,x) }
 
 general:
@@ -124,11 +125,11 @@ let mk_formula(atom) :=
 
 (* Configuration *)
 config:
-| maxprof=econfig(MAXPROF,Int) functions=econfig(FUNCTIONS,list(LowerId))
+| maxprof=econfig(MAXPROF,Int)
   static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId))
   types = list(type_elem) EOF
  {
-   {maxprof;functions;static;dynamic;types}
+   {maxprof;static;dynamic;types}
  }
 
 let econfig(keyword,value) :=

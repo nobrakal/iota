@@ -1,4 +1,5 @@
 let maxprof = 2
-let functions = f g
 let static = E
 let dynamic = Active Open
+
+type mol = m of mol | f of site | g of site

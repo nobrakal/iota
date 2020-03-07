@@ -37,7 +37,6 @@ rule token = parse
   | "exists" { EXISTS }
 
   | "maxprof" { MAXPROF }
-  | "functions" { FUNCTIONS }
   | "static" { STATIC }
   | "dynamic" { DYNAMIC }
 
@@ -46,6 +45,9 @@ rule token = parse
   | "+"      { PLUS }
   | "&&"     { LAND }
   | "||"     { LOR }
+
+  | "<"      { LCHEVRON }
+  | ">"      { RCHEVRON }
 
   | "|"    { GUARD }
   | "of"   { OF }
