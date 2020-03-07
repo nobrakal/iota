@@ -25,12 +25,17 @@ let print_err x =
 let config buf =
   Parser.config Lexer.token buf
 
+let map_filter f p xs =
+  List.(map f (filter p xs))
+
 let main config lexbuf =
   match try Some (Parser.program Lexer.token lexbuf) with Parser.Error -> None with
   | None -> Error Menhir
   | Some ast ->
-     let static = Program.SString.of_list config.static in
-     let dynamic = Program.SString.of_list config.dynamic in
+     let static =
+       Program.SString.of_list (map_filter (fun (_,x,_) -> x) (fun (b,_,_) -> not b) config.predicates) in
+     let dynamic =
+       Program.SString.of_list (map_filter (fun (_,x,_) -> x) (fun (b,_,_) -> b) config.predicates) in
      (* Transform the parsed AST into a "real one", knowing static and dynamic functions *)
      match Program.program_of_parsed ~static ~dynamic ast with
      | Error e -> Error (Parse e)

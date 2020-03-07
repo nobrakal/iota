@@ -1,7 +1,9 @@
 let maxprof = 2
-let static = E
-let dynamic = Active Open
 
 type site
 type mol = m of mol | f of site | g of site
 type mol2 = h of site
+
+static E about mol
+dynamic Active about mol
+dynamic Open about mol

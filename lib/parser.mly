@@ -33,7 +33,7 @@
 %token TYPE GUARD OF
 
 (* Config tokens *)
-%token MAXPROF STATIC DYNAMIC
+%token MAXPROF STATIC DYNAMIC ABOUT
 
 (* Typed tokens *)
 %token<string> LowerId UpperId
@@ -125,11 +125,9 @@ let mk_formula(atom) :=
 
 (* Configuration *)
 config:
-| maxprof=econfig(MAXPROF,Int)
-  static=econfig(STATIC,list(UpperId)) dynamic=econfig(DYNAMIC,list(UpperId))
-  types = list(type_elem) EOF
+| maxprof=econfig(MAXPROF,Int) types = list(type_elem) predicates=list(predicate) EOF
  {
-   {maxprof;static;dynamic;types}
+   {maxprof;predicates;types}
  }
 
 let econfig(keyword,value) :=
@@ -140,3 +138,7 @@ let type_elem :=
   | TYPE; x=LowerId; EQ; xs=separated_nonempty_list(GUARD,accessor); {(x,xs)}
 
 accessor: x=LowerId OF y=LowerId {(x,y)}
+
+predicate:
+| STATIC  x=UpperId ABOUT y=LowerId {(false,x,y)}
+| DYNAMIC x=UpperId ABOUT y=LowerId {(true,x,y)}

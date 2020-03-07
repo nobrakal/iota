@@ -39,6 +39,7 @@ rule token = parse
   | "maxprof" { MAXPROF }
   | "static" { STATIC }
   | "dynamic" { DYNAMIC }
+  | "about"   { ABOUT }
 
   | "=>"     { BIGARROW }
   | "->"     { ARROW }

@@ -1,5 +1,4 @@
 type config =
   { maxprof : int
-  ; static : string list
-  ; dynamic : string list
+  ; predicates : (bool * string * string) list (** is_dynamic,name,type *)
   ; types : Sum_types.ty_dec list }
