@@ -1,5 +1,10 @@
 open Program
 
+(** This module ensures that:
+- Guards are well formed
+- General formulas are valid.
+*)
+
 type gen = Ensure | Maintain
 
 module type Structure =

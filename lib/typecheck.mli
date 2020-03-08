@@ -1,5 +1,10 @@
 open Program
 
+(** This module
+- Runs algorithm W on the code
+- Tries to infer missing guards
+*)
+
 (** Type of monomorphic types *)
 type monoty =
   | V of string (** Type variable *)

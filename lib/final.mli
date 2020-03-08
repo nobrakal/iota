@@ -1,5 +1,12 @@
 open Program
 
+(** This module compiles a typechecking program to a final one. It
+- Inlines all let definitions.
+- Moves negation only on leaves.
+- Compiles [TLink] to the corresponding list of [Link].
+- Simplifies [Link(x.f)] into [x].
+*)
+
 type tag =
   | N (** Not *)
   | E (** Exact *)

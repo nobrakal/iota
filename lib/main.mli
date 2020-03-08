@@ -12,6 +12,14 @@ val print_err : err -> unit
 
 val config : Lexing.lexbuf -> Config.config
 
+(**
+  Provided a configuration and a Lexbuf to parse, this function compiles a Iota code. It:
++ Parses it using Menhir.
++ Typechecks it (with {!Iota.Typecheck}).
++ Compiles it to a much simpler final object (with {!Iota.Final}).
++ Ensures its validty (with {!Iota.Structure}).
+
+*)
 val main :
   Config.config ->
   Lexing.lexbuf -> (string Final.final_program, err) result

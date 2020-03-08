@@ -1,3 +1,5 @@
+(** This module defines main data structures and their related functions. *)
+
 type binop = And | Or
 
 val string_of_binop : binop -> string
