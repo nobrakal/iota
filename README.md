@@ -1,4 +1,19 @@
+# How it works ?
+
+The compiler (in `lib/main.ml`) works with the following steps:
+
+1. Parsing
+2. Typechecking
+3. Inlining of all definitions
+4. Verification of the structure
+
+# Documentation
+
+Odoc generated documentation is available at: [https://nobrakal.github.io/iota/iota/](https://nobrakal.github.io/iota/iota/).
+
 # Syntax
+
+## Main file
 
 NB:
  * `{x}` is a list of `x`
@@ -55,18 +70,21 @@ general ::=
   | => formula
 
 program ::=
-  | {letdef} IN {safe | ;} ENSURE {general | ;} MAINTAIN {general | ;}
+  | {letdef} in {safe | ;} ensure {general | ;} maintain {general | ;}
 ```
 
-# How it works ?
+## Config file
+```
+config ::=
+  letdefs {type'} {predicate}
 
-The compiler (in `lib/main.ml`) works with the following steps:
+letdefs ::=
+  let maxprof = int
 
-1. Parsing
-2. Typechecking
-3. Inlining of all definitions
-4. Verification of the structure
+type' ::=
+  type lower_id = {lower_id of type | |}
 
-# Documentation
-
-Odoc generated documentation is available at: [https://nobrakal.github.io/iota/iota/](https://nobrakal.github.io/iota/iota/).
+predicate ::=
+  | static  upper_id about lower_id
+  | dynamic upper_id about lower_id
+```
