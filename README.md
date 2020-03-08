@@ -9,9 +9,11 @@ upper_lit ::= (A-Z) [a-Z]*
 
 lower_lit ::= [a-z] [a-Z]*
 
+type ::= lower_lit
+
 term ::=
   | lower_lit
-  | parent (lower_lit)
+  | parent<type,type>(lower_lit)
   | lower_lit.lower_lit (* x.f is f(x) *)
 
 guard ::=
@@ -20,12 +22,12 @@ guard ::=
 
 rguard ::=
   | guard
-  | TLink(term,term)
+  | TLink<type,type>(term,term)
 
 predicate ::=
   | rguard
   | Has(term)
-  | upper_lit (term)
+  | upper_lit<type>(term)
 
 formula ::=
   | predicate
