@@ -7,7 +7,7 @@ The compiler (in `lib/main.ml`) works with the following steps:
 3. Compiling
 4. Verification of the structure
 
-Details are available in Odoc generated documentation available at: [https://nobrakal.github.io/iota/iota/Iota/Main/index.html](https://nobrakal.github.io/iota/iota/Iota/Main/index.html).
+Details are available in the [Odoc generated documentation](https://nobrakal.github.io/iota/iota/Iota/Main/index.html).
 
 # Syntax
 
