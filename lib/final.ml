@@ -161,6 +161,36 @@ let lit ~maxprof ~types x =
 let remove_tlink ~maxprof ~types f =
   fold_formula (lit ~maxprof ~types) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
+let rec simpl_parent_func = function
+  | V x -> V x
+  | Parent (_,_,Func(_,x)) -> simpl_parent_func x
+  | Parent (s1,s2,x) -> Parent (s1,s2,simpl_parent_func x)
+  | Func (f,x) -> Func (f, simpl_parent_func x)
+
+let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
+
+let simpl_parent_func_p = function
+  | Stat (s,v) -> Stat (s,simpl_parent_func v)
+  | Dyn (b,x) ->
+     let x =
+       match x with
+       | Has x -> Has (simpl_parent_func x)
+       | Bin t -> Bin (simpl_parent_func_b t)
+       | Other (s,x) -> Other (s, simpl_parent_func x) in
+     Dyn (b,x)
+
+let rec simpl_parent_func_s x =
+  match x with
+  | FLeaf (t,x) -> FLeaf (t, simpl_parent_func_p x)
+  | FForall (x,g,f) -> FForall (x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | FExists (x,g,f) -> FExists (x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | FBinop (b,x,y) -> FBinop (b, simpl_parent_func_s x, simpl_parent_func_s y)
+
+let simpl_parent_func_g (General (xs,f)) =
+  let xs = List.map simpl_parent_func_b xs in
+  let f = fold_formula (fun x -> Lit (simpl_parent_func_p x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f in
+  General (xs,f)
+
 let fsafe_of_safe ~maxprof ~types x =
   let quantif f g =
     match g with
@@ -207,9 +237,13 @@ let final_of_program ~maxprof ~types ({vars;safe;ensure;maintain} : string progr
   let vars = inline_vars_in_vars vars in
   let fsafe =
     List.map
-      (fun x -> fsafe_of_safe ~maxprof ~types (safe_of_nf (normal_form vars x))) safe in
-  let fensure = bind ensure (fun x -> remove_tlink_general ~maxprof ~types x) in
-  let fmaintain = bind maintain (fun x -> remove_tlink_general ~maxprof ~types x) in
+      (fun x -> simpl_parent_func_s (fsafe_of_safe ~maxprof ~types (safe_of_nf (normal_form vars x)))) safe in
+  let fensure =
+    List.map simpl_parent_func_g
+      (bind ensure (fun x -> remove_tlink_general ~maxprof ~types x)) in
+  let fmaintain =
+    List.map simpl_parent_func_g
+      (bind maintain (fun x -> remove_tlink_general ~maxprof ~types x)) in
   {fsafe; fensure; fmaintain}
 
 let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
