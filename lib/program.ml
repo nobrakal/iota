@@ -59,6 +59,16 @@ let map_var f x =
     | Func (s,x) -> Func (s, aux x)
   in aux x
 
+let map_lit f x = match x with
+  | Stat (s,v) -> Stat (s,f v)
+  | Dyn (b,x) ->
+     let x =
+       match x with
+       | Has x -> Has (f x)
+       | Bin (b,x,y) -> Bin (b, f x, f y)
+       | Other (s,x) -> Other (s,f x) in
+     Dyn (b,x)
+
 let rec extract_var x =
   match x with
   | V x -> x

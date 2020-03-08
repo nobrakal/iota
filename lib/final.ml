@@ -53,13 +53,7 @@ let replace_vars vars x =
   let replace x =
     try map_var (fun x -> var_of_safe (List.assoc x vars)) x
     with Not_found -> x in
-  let dyn = function
-    | Has x -> Has (replace x)
-    | Bin (b,x,y) -> Bin (b,replace x, replace y)
-    | Other (s,x) -> Other (s, replace x) in
-  match x with
-    | Stat (x,i) -> Stat (x, replace i)
-    | Dyn (b,x) -> Dyn (b, dyn x)
+  map_lit replace x
 
 let negate_tag = function
   | N -> E
@@ -169,15 +163,7 @@ let rec simpl_parent_func = function
 
 let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
 
-let simpl_parent_func_p = function
-  | Stat (s,v) -> Stat (s,simpl_parent_func v)
-  | Dyn (b,x) ->
-     let x =
-       match x with
-       | Has x -> Has (simpl_parent_func x)
-       | Bin t -> Bin (simpl_parent_func_b t)
-       | Other (s,x) -> Other (s, simpl_parent_func x) in
-     Dyn (b,x)
+let simpl_parent_func_p = map_lit simpl_parent_func
 
 let rec simpl_parent_func_s x =
   match x with
@@ -188,7 +174,7 @@ let rec simpl_parent_func_s x =
 
 let simpl_parent_func_g (General (xs,f)) =
   let xs = List.map simpl_parent_func_b xs in
-  let f = fold_formula (fun x -> Lit (simpl_parent_func_p x)) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f in
+  let f = map_formula simpl_parent_func_p f in
   General (xs,f)
 
 let fsafe_of_safe ~maxprof ~types x =

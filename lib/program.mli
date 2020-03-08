@@ -36,6 +36,7 @@ type ('a,'b) lit =
   | Dyn of bool * ('a,'b) dynamic
   | Stat of string * 'a var
 
+val map_lit : ('a var -> 'b var) -> ('a,'c) lit -> ('b,'c) lit
 val string_of_lit : ('a -> string) -> ('b -> string) -> ('a, 'b) lit -> string
 
 type 'a formula =
