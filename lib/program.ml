@@ -1,3 +1,5 @@
+open Utils
+
 type binop = And | Or
 
 type binpred = Eq | Link
@@ -167,20 +169,18 @@ let string_of_general s p g (General (xs,x)) =
 
 let print_general s p g x = print_endline (string_of_general s p g x)
 
-module SString = Set.Make(String)
-
 exception ParseError of parse_error
 
 let mk_lit ~static ~dynamic (b,dyn) =
   match dyn with
   | Has _ | Bin _ -> Dyn (b,dyn)
   | Other (s,x) ->
-     if SString.mem s dynamic then Dyn (b,dyn)
+     if StringSet.mem s dynamic then Dyn (b,dyn)
      else
        if b
        then raise (ParseError (UnboundDynamic s))
        else
-         if SString.mem s static then Stat (s,x)
+         if StringSet.mem s static then Stat (s,x)
          else raise (ParseError (UnboundSymbol s))
 
 let safe_of_parsed ~static ~dynamic =

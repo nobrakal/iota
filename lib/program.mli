@@ -1,4 +1,5 @@
 (** This module defines main data structures and their related functions. *)
+open Utils
 
 type binop = And | Or
 
@@ -103,11 +104,9 @@ type parse_error =
 
 val string_of_parse_error : parse_error -> string
 
-module SString : Set.S with type elt = string
-
 (** Transform a parsed program into a real one knowing static and dynamic predicates *)
 val program_of_parsed :
-  static:SString.t -> dynamic:SString.t ->
+  static:StringSet.t -> dynamic:StringSet.t ->
   'a parsed_program -> ('a program, parse_error) result
 
 module type Manip =

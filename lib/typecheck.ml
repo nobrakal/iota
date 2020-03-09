@@ -1,4 +1,5 @@
 open Program
+open Utils
 
 module Subst = Map.Make(String)
 
@@ -24,12 +25,12 @@ let fresh_ty () =
   V ("_" ^ string_of_int ! internal_counter)
 
 let rec fv_of_ty = function
-  | Litt _ | Safet -> SString.empty
-  | V x -> SString.singleton x
-  | Arrow (x,y) -> SString.union (fv_of_ty x) (fv_of_ty y)
+  | Litt _ | Safet -> StringSet.empty
+  | V x -> StringSet.singleton x
+  | Arrow (x,y) -> StringSet.union (fv_of_ty x) (fv_of_ty y)
 
 let fv_of_scheme (S (xs,x)) =
-  SString.diff (fv_of_ty x) (SString.of_list xs)
+  StringSet.diff (fv_of_ty x) (StringSet.of_list xs)
 
 let scheme_of_mono x = S ([],x)
 
@@ -61,7 +62,7 @@ let bindvar u t =
   then Subst.empty
   else
     let fv = fv_of_ty t in
-    if SString.mem u fv
+    if StringSet.mem u fv
     then raise Exit
     else Subst.singleton u t
 
@@ -121,12 +122,12 @@ module Make (Manip : Manip) = struct
     try unify x y with
     | Exit -> raise (Te (WrongType (x,y)))
 
-  let fv_of_env x = M.fold (fun _ x s -> SString.union s (fv_of_scheme x)) x SString.empty
+  let fv_of_env x = M.fold (fun _ x s -> StringSet.union s (fv_of_scheme x)) x StringSet.empty
   let apply_subst_env s x = M.map (apply_subst_scheme s) x
 
   let generalize env t =
-    let vars = SString.diff (fv_of_ty t) (fv_of_env env) in
-    let vars = SString.fold (fun x xs -> x::xs) vars [] in
+    let vars = StringSet.diff (fv_of_ty t) (fv_of_env env) in
+    let vars = StringSet.fold (fun x xs -> x::xs) vars [] in
     S (vars,t)
 
   let ti_var ~types env x =
@@ -174,11 +175,11 @@ module Make (Manip : Manip) = struct
     Subst.union left_bias (verif_pred ~predicates vars x) subst
 
   let union x y =
-    let x' = Subst.fold (fun x _ y -> SString.add x y) x SString.empty in
-    let y' = Subst.fold (fun x _ y -> SString.add x y) y SString.empty in
-    let inter = SString.inter x' y' in
+    let x' = Subst.fold (fun x _ y -> StringSet.add x y) x StringSet.empty in
+    let y' = Subst.fold (fun x _ y -> StringSet.add x y) y StringSet.empty in
+    let inter = StringSet.inter x' y' in
     let substs =
-      SString.fold (fun e acc -> (unify (Subst.find e x) (Subst.find e y)) :: acc ) inter [] in
+      StringSet.fold (fun e acc -> (unify (Subst.find e x) (Subst.find e y)) :: acc ) inter [] in
     let final = compose_subst x y in
     match substs with
     | [] -> final
