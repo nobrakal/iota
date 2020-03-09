@@ -6,8 +6,7 @@ type tag = N | E
 
 type ('a,'l) pre_fsafe =
   | FLeaf of tag * 'l
-  | FForall of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
-  | FExists of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
+  | FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
 
 let string_of_tag = function
@@ -17,9 +16,9 @@ let string_of_tag = function
 let string_of_fsafe f e u =
   let rec aux = function
     | FLeaf (x,y) -> string_of_tag x ^ paren (f y)
-    | FForall (a,g,x) ->
+    | FQuantif (Forall,a,g,x) ->
        "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ paren (aux x)
-    | FExists (a,g,x) ->
+    | FQuantif (Exists,a,g,x) ->
        "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ paren (aux x)
     | FBinop (b,x,y) -> paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
   in aux u
@@ -60,8 +59,11 @@ let negate_tag = function
 let rec negate x =
   match x with
   | FLeaf (x,y) -> FLeaf (negate_tag x, y)
-  | FForall (x,b,f) -> FExists (x, b, negate f)
-  | FExists (x,b,f) -> FForall (x, b, negate f)
+  | FQuantif (q,x,b,f) ->
+     let q = match q with
+       | Forall -> Exists
+       | Exists -> Forall in
+     FQuantif (q, x, b, negate f)
   | FBinop (b,x,y) ->
      let b = match b with
        | And -> Or
@@ -84,12 +86,9 @@ let rec normal_form vars = function
         | [] -> body
         | x::xs -> join_closure x xs body end
      | Safe x -> Safe (Apply (x,y)) end
-  | Forall (x,f,y) ->
+  | Quantif (q,x,f,y) ->
      let vars = List.remove_assoc x vars in
-     Safe (Forall (x,f, safe_of_nf (normal_form vars y)))
-  | Exists (x,f,y) ->
-     let vars = List.remove_assoc x vars in
-     Safe (Exists (x,f, safe_of_nf (normal_form vars y)))
+     Safe (Quantif (q,x,f, safe_of_nf (normal_form vars y)))
   | Formula f ->
      Safe (Formula (map_formula (fun x -> safe_of_nf (normal_form vars x)) f))
 
@@ -166,8 +165,7 @@ let simpl_parent_func_p = map_lit simpl_parent_func
 let rec simpl_parent_func_s x =
   match x with
   | FLeaf (t,x) -> FLeaf (t, simpl_parent_func_p x)
-  | FForall (x,g,f) -> FForall (x,simpl_parent_func_b g, simpl_parent_func_s f)
-  | FExists (x,g,f) -> FExists (x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | FQuantif (q,x,g,f) -> FQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
   | FBinop (b,x,y) -> FBinop (b, simpl_parent_func_s x, simpl_parent_func_s y)
 
 let simpl_parent_func_g (General (xs,f)) =
@@ -189,10 +187,8 @@ let fsafe_of_safe ~maxprof ~types x =
        assert false
     | Leaf y ->
        fold_formula (fun x -> FLeaf (E,x)) negate (fun a b c -> FBinop (a,b,c)) (lit ~maxprof ~types y)
-    | Forall (x,g,a) ->
-       quantif (fun g -> FForall (x, g, aux a)) g
-    | Exists (x,g,a) ->
-       quantif (fun g -> FExists (x, g, aux a)) g
+    | Quantif (q,x,g,a) ->
+       quantif (fun g -> FQuantif (q, x, g, aux a)) g
     | Formula f ->
        fold_formula aux
          (fun x -> negate x)

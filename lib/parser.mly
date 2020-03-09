@@ -71,8 +71,8 @@ letdef:
 
 safe:
 | x=safe_formula { Formula x }
-| FORALL x=LowerId y=guard ARROW z=safe { Forall (x,y,z) }
-| EXISTS x=LowerId y=guard LAND z=safe { Exists (x,y,z) }
+| FORALL x=LowerId y=guard ARROW z=safe { Quantif (Forall,x,y,z) }
+| EXISTS x=LowerId y=guard LAND z=safe { Quantif (Exists,x,y,z) }
 | x=safe_apply { x }
 
 safe_apply:

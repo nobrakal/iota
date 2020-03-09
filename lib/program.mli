@@ -57,14 +57,15 @@ val fold_formula :
 val map_formula :
   ('a -> 'b) -> 'a formula -> 'b formula
 
+type quantif = Forall | Exists
+
 (** A safe syntax which can be meaningless *)
 type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
   | Leaf of 'l
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
-  | Exists of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe

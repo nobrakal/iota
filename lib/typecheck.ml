@@ -208,7 +208,7 @@ module Make (Manip : Manip) = struct
          let t',s' = aux (M.map (apply_subst_scheme s) env) y in
          let s'' = unify (apply_subst_ty s' t) (Arrow (t', tv)) in
          apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
-      | Exists (x,u,b) | Forall (x,u,b) ->
+      | Quantif (_,x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
          let subst = ti_lit ~predicates ~types nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
@@ -252,7 +252,7 @@ module Make (Manip : Manip) = struct
            (GI.infer_guard x xs body)
            (fun e -> Option.map (fun xs -> (x,e) :: xs) (try_permut xs)) in
     let newformula xs =
-      List.fold_left (fun acc (e,y) -> Exists (e,y,acc)) body xs in
+      List.fold_left (fun acc (e,y) -> Quantif (Exists,e,y,acc)) body xs in
     let body,(t,s) =
       try body,type_of_def ~predicates ~types env args body
       with

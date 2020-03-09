@@ -43,7 +43,7 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
            aux
            (Option.map (fun (x,y) -> (not x, y)))
            binop f
-      | Exists _ | Forall _ -> None (* TODO verify *)
+      | Quantif _ -> None (* TODO verify *)
       | Apply _ -> None (* TODO This should not be the case *)
     in
     match aux x with

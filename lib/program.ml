@@ -4,6 +4,8 @@ type binop = And | Or
 
 type binpred = Eq | Link
 
+type quantif = Forall | Exists
+
 type rbinpred =
   | TLink of string * string
   | B of binpred
@@ -34,8 +36,7 @@ type ('a,'l) pre_safe =
   | Leaf of 'l
   | Var of 'a
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Forall of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
-  | Exists of 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 
@@ -147,9 +148,9 @@ let string_of_safe s p x =
     | Var x -> p x
     | Apply (x,y) ->
        paren (aux x) ^ paren (aux y)
-    | Forall (x,y,z) ->
+    | Quantif (Forall,x,y,z) ->
        "forall " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
-    | Exists (x,y,z) ->
+    | Quantif (Exists,x,y,z) ->
        "exists " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
     | Formula f -> string_of_formula aux f
   in aux x
@@ -185,8 +186,7 @@ let safe_of_parsed ~static ~dynamic =
     | Leaf x -> Leaf (mk_lit ~static ~dynamic x)
     | Var x -> Var x
     | Apply (x,y) -> Apply (aux x, aux y)
-    | Forall (a,l,x) -> Forall (a, l, aux x)
-    | Exists (a,l,x) -> Exists (a, l, aux x)
+    | Quantif (q,a,l,x) -> Quantif (q, a, l, aux x)
     | Formula f -> Formula (map_formula aux f)
   in aux
 
@@ -245,7 +245,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Forall (_,f,x) | Exists (_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
+    | Quantif (_,_,f,x)  -> S.union (variables_of_guard f) (variables_of_safe x)
     | Formula f ->
        fold_formula variables_of_safe (fun x -> x) (fun _ -> S.union) f
 
@@ -253,7 +253,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Forall (u,f,x) | Exists (u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
+    | Quantif (_,u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
     | Formula f ->
        fold_formula fv_of_safe (fun x -> x) (fun _ -> S.union) f
 
