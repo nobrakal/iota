@@ -95,9 +95,6 @@ let string_of_parse_error = function
   | UnboundDynamic s -> "Unbound dynamic: " ^ s
   | UnboundSymbol s -> "Unbound symbol: " ^ s
 
-let paren s = "(" ^ s ^ ")"
-let space s = " " ^ s ^ " "
-
 let string_of_var s =
   let rec aux = function
   | V x -> s x

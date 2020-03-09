@@ -1,4 +1,5 @@
 open Program
+open Utils
 
 (* Not and Exact *)
 type tag = N | E
@@ -9,21 +10,18 @@ type ('a,'l) pre_fsafe =
   | FExists of 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
   | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
 
-let par x = "(" ^ x ^ ")"
-let space x = " " ^ x ^ " "
-
 let string_of_tag = function
   | N -> "not "
   | E -> ""
 
 let string_of_fsafe f e u =
   let rec aux = function
-    | FLeaf (x,y) -> string_of_tag x ^ par (f y)
+    | FLeaf (x,y) -> string_of_tag x ^ paren (f y)
     | FForall (a,g,x) ->
-       "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ par (aux x)
+       "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ paren (aux x)
     | FExists (a,g,x) ->
-       "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ par (aux x)
-    | FBinop (b,x,y) -> par (aux x) ^ space (string_of_binop b) ^ par (aux y)
+       "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ paren (aux x)
+    | FBinop (b,x,y) -> paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
   in aux u
 
 let print_fsafe f e x = print_endline (string_of_fsafe f e x)
