@@ -80,7 +80,7 @@ letdefs ::=
   let maxprof = int
 
 type' ::=
-  type lower_id = {lower_id of type | |}
+  type lower_id = {lower_id to type | |}
 
 predicate ::=
   | static  upper_id about lower_id

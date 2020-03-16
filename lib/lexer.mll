@@ -51,7 +51,7 @@ rule token = parse
   | ">"      { RCHEVRON }
 
   | "|"    { GUARD }
-  | "of"   { OF }
+  | "to"   { TO }
 
   | ";"      { SEMICOLON }
   | ","      { COMMA }

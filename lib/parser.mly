@@ -30,7 +30,7 @@
 
 %token FORALL EXISTS
 
-%token TYPE GUARD OF
+%token TYPE GUARD TO
 
 (* Config tokens *)
 %token MAXPROF STATIC DYNAMIC ABOUT
@@ -137,7 +137,7 @@ let type_elem :=
   | TYPE; x=LowerId; {(x,[])}
   | TYPE; x=LowerId; EQ; xs=separated_nonempty_list(GUARD,accessor); {(x,xs)}
 
-accessor: x=LowerId OF y=LowerId {(x,y)}
+accessor: x=LowerId TO y=LowerId {(x,y)}
 
 predicate:
 | STATIC  x=UpperId ABOUT y=LowerId {(false,x,y)}
