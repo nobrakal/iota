@@ -1,0 +1,89 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage{syntax}
+
+\author{Alexandre Moine}
+\title{Iota - Manual}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Iota is a programming language.
+
+\section{Syntax of the language}
+Nota Bene:
+\begin{itemize}
+\item \verb|[<rule>]| symbolise a list of \verb|<rule>|.
+\item \verb|[<rule> // <sep>]| symbolise a list of \verb|<rule>| separated by \verb|<sep>|.
+\end{itemize}
+
+\subsection{Syntax of programs}
+
+\begin{grammar}
+  <lident> ::= [a-z][a-zA-Z0-9]*
+
+  <hident> ::= [A-Z][a-zA-Z0-9]*
+
+  <type> ::= <lident>
+
+  <term> ::= <lident>
+  \alt `parent<' <type> `,' <type> `>(' <term> `)'
+  \alt <term> `.' <lident>
+
+  <guard> ::= `Eq(' <term> `,' <term> `)'
+  \alt `Link(' <term> `,' <term> `)'
+  \alt `TLink<' <type> `,' <type> `>(' <term> `,' <term> `)'
+
+  <predicate> ::= <guard>
+  \alt `Has(' <term> `)'
+  \alt <hident> `(' <term> `)'
+
+  <formula> ::= <predicate>
+  \alt `+'<predicate>
+  \alt `not' <formula>
+  \alt <formula> `&&' <formula>
+  \alt <formula> `||' <formula>
+  \alt `(' <formula> `)'
+
+  <safe> ::= <formula>
+  \alt <lident>
+  \alt <safe> `&&' <safe>
+  \alt <safe> `||' <safe>
+  \alt `forall' <lident> <guard> `->' <safe>
+  \alt `exists' <lident> <guard> `&&' <safe>
+  \alt <safe> <safe>
+  \alt `(' <safe> `)'
+
+  <letdef> ::= \lit{let} <lident> [<lident>] \lit{=} <safe>
+
+  <general> ::=
+  <guard> \lit{->} <general>
+  \alt \lit{=>} <formula>
+
+  <program> ::=
+  [<letdef>] \lit{in} [<safe> // \lit{;}] \lit{ensure} [<general> // \lit{;}] \lit{maintain} [<general> // \lit{;}]
+
+\end{grammar}
+
+\subsection{Syntax of configuration file}
+\begin{grammar}
+  <constants> ::=
+  \lit{let} \lit{maxprof} \lit{=} <int>
+
+  <typedef> ::=
+  \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
+
+  <preddef> ::=
+  \lit{static} <hident> \lit{about} <lident>
+  \alt \lit{dynamic} <hident> \lit{about} <lident>
+
+  <config> ::=
+  <constants> [<typedef>] [<preddef>]
+\end{grammar}
+
+\section{Semantics}
+\end{document}
