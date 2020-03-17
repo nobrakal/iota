@@ -2,7 +2,9 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
+
 \usepackage{minted}
+\newcommand{\coq}{\mintinline{ocaml}}
 
 \usepackage{syntax}
 
@@ -10,7 +12,9 @@
 \title{Iota - Manual}
 
 \begin{document}
+
 \maketitle
+\tableofcontents
 
 \section{Introduction}
 Iota is a programming language.
@@ -117,5 +121,16 @@ static E about mol
 dynamic Active about mol
 dynamic Open about site
 \end{minted}
+
+This file declares wo types:
+
+\begin{itemize}
+\item A leaf \ocaml{site}.
+\item A node \ocaml{mol} with three possible children:
+  \begin{itemize}
+  \item An other node \ocaml{mol}.
+  \item Two sites \ocaml{f} and \ocaml{g}.
+  \end{itemize}
+\end{itemize}
 
 \end{document}
