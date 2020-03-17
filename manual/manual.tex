@@ -2,9 +2,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
+\usepackage{hyperref}
 
 \usepackage{minted}
-\newcommand{\coq}{\mintinline{ocaml}}
+\newcommand{\ocaml}{\mintinline{ocaml}}
 
 \usepackage{syntax}
 
@@ -122,7 +123,7 @@ dynamic Active about mol
 dynamic Open about site
 \end{minted}
 
-This file declares wo types:
+This file declares two types:
 
 \begin{itemize}
 \item A leaf \ocaml{site}.
@@ -132,5 +133,43 @@ This file declares wo types:
   \item Two sites \ocaml{f} and \ocaml{g}.
   \end{itemize}
 \end{itemize}
+
+\subsection{Of a iota file}
+
+\subsubsection{Basics}
+All iota files are \emph{in fine} a list of simple formulas.
+
+\paragraph{Literals}
+Formulas are about literals. A iota literal is either:
+\begin{itemize}
+\item A name.
+\item A child of a literal.
+\item The parent of a literal.
+\end{itemize}
+
+\paragraph{Predicates}
+Predicates can be used to extract information about literals. Some predicates are bundled into the iota syntax itself:
+\begin{itemize}
+\item \ocaml{Eq} is a binary predicate expressing the fact that two literals are equals. It can be applied to literals of any types.
+\item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types.
+\item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees from the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
+\item \ocaml{Has} is a unary predicate expressing the \emph{presence} of a literal. It can be applied to literal of any types.
+\end{itemize}
+
+The user can specify other predicates using the configuration file. Note that user-defined predicates are \emph{typed}, meaning that, once defined, they can be applied only to one type of literal.
+
+\paragraph{Static vs Dynamic}
+Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+}. \ocaml{Eq}, \ocaml{Link} and \ocaml{Has} are dynamic.
+
+\paragraph{Formulas}
+Then you can build propositional formulas over these (fully applied) predicates using usual combinators \ocaml{not}, \ocaml{&&} and \ocaml{||}.
+
+\paragraph{Examples}
+Here is some examples using the previous configuration:
+\begin{minted}[frame=lines]{ocaml}
+Active(x);
+Active(x) && not (Active (x.m));
+Has(x) && (not (Open(x.t)) || +Link(x.t,y.g))
+\end{minted}
 
 \end{document}
