@@ -2,6 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
+\usepackage{minted}
 
 \usepackage{syntax}
 
@@ -20,6 +21,8 @@ Nota Bene:
 \item \verb|[<rule>]| symbolise a list of \verb|<rule>|.
 \item \verb|[<rule> // <sep>]| symbolise a list of \verb|<rule>| separated by \verb|<sep>|.
 \end{itemize}
+
+Comments à-la-OCaml can be used everywhere.
 
 \subsection{Syntax of programs}
 
@@ -75,7 +78,8 @@ Nota Bene:
   \lit{let} \lit{maxprof} \lit{=} <int>
 
   <typedef> ::=
-  \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
+  \lit{type} <lident>
+  \alt \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
 
   <preddef> ::=
   \lit{static} <hident> \lit{about} <lident>
@@ -86,4 +90,32 @@ Nota Bene:
 \end{grammar}
 
 \section{Semantics}
+\subsection{Of the configuration file}
+\subsubsection{The maxporf parameter}
+All trees have \emph{bound} size, thus one must specify the maximum size of a tree.
+
+\subsubsection{Types}
+Nodes, leaves and some operations on trees are \emph{typed}.
+\begin{itemize}
+\item Types without accessors. They will represent leaves.
+\item Types with accesors. They will represent nodes. Each accessor is composed by a name and a type.
+  This indicates the type of the child and how to access it.
+\end{itemize}
+
+\subsubsection{Predicates}
+Finally, one have to define predicates. A predicate gives information about a node of some type.
+
+\subsubsection{Example}
+Here is a valid configuration file:
+\begin{minted}[frame=lines]{ocaml}
+let maxprof = 10
+
+type site
+type mol = m to mol | f to site | g to site
+
+static E about mol
+dynamic Active about mol
+dynamic Open about site
+\end{minted}
+
 \end{document}
