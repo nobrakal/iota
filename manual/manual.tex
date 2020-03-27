@@ -9,6 +9,8 @@
 
 \usepackage{syntax}
 
+\setcounter{tocdepth}{2}
+
 \author{Alexandre Moine}
 \title{Iota - Manual}
 
@@ -94,12 +96,11 @@ Comments à-la-OCaml can be used everywhere.
   <constants> [<typedef>] [<preddef>]
 \end{grammar}
 
-\section{Semantics}
-\subsection{Of the configuration file}
-\subsubsection{The maxporf parameter}
+\subsection{Semantics of the configuration file}
+\subsection{The maxporf parameter}
 All trees have \emph{bound} size, thus one must specify the maximum size of a tree.
 
-\subsubsection{Types}
+\subsection{Types}
 Nodes, leaves and some operations on trees are \emph{typed}.
 \begin{itemize}
 \item Types without accessors. They will represent leaves.
@@ -107,10 +108,10 @@ Nodes, leaves and some operations on trees are \emph{typed}.
   This indicates the type of the child and how to access it.
 \end{itemize}
 
-\subsubsection{Predicates}
+\subsection{Predicates}
 Finally, one have to define predicates. A predicate gives information about a node of some type.
 
-\subsubsection{Example}
+\subsection{Example}
 Here is a valid configuration file:
 \begin{minted}[frame=lines]{ocaml}
 let maxprof = 10
@@ -134,9 +135,9 @@ This file declares two types:
   \end{itemize}
 \end{itemize}
 
-\subsection{Of a iota file}
+\section{Semantics of a iota file}
 
-\subsubsection{Basics}
+\subsection{Propositional formulas}
 All iota files are \emph{in fine} a list of simple formulas.
 
 \paragraph{Literals}
@@ -172,4 +173,50 @@ Active(x) && not (Active (x.m));
 Has(x) && (not (Open(x.t)) || +Link(x.t,y.g))
 \end{minted}
 
+\subsection{Toward first-order}
+Then, one can construct first-order formulas using the two following structures:
+\begin{itemize}
+\item \ocaml{forall x, guard(x,y) -> formula(x)}
+\item \ocaml{exists x, guard(x,y) && formula(x)}
+\end{itemize}
+Notice that each quantifies variable is \emph{guarded}.
+
+\subsection{Writing programs}
+Now, we can wire up all these definitions using a standard let-syntax.
+
+\section{The compilation back-end}
+The compilation is divided into 4 steps:
+\begin{enumerate}
+\item Parsing.
+\item Typechecking.
+\item Compilation itself.
+\item Verification of the resulting structure.
+\end{enumerate}
+
+\subsection{Parsing}
+The described syntax is parsed using the great Menhir: \url{http://gallium.inria.fr/~fpottier/menhir/}.
+
+\subsection{Typechecking}
+Programs are typechecked (using algorithm W) to ensure the validity of the file.
+
+\subsubsection{Guard inference}
+
+\subsection{Compilation}
+The compilation itself is divided into sub-steps.
+
+\paragraph{Inlining}
+
+\paragraph{Compilation of TLink}
+
+\paragraph{Normal form of formulas}
+
+\paragraph{Optimization}
+
+\subsection{Verification}
+The resulting structure must satisfies some properties.
+
 \end{document}
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
