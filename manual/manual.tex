@@ -194,7 +194,7 @@ The compilation is divided into 4 steps:
 \end{enumerate}
 
 \subsection{Parsing}
-The described syntax is parsed using the great Menhir: \url{http://gallium.inria.fr/~fpottier/menhir/}.
+The described syntax is parsed using the great Menhir (\url{http://gallium.inria.fr/~fpottier/menhir/}).
 
 \subsection{Typechecking}
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
@@ -231,6 +231,29 @@ Note that this optimization is legal in the sense that, since the program typech
 
 \subsection{Verification}
 The resulting structure must satisfies some properties.
+
+\section{About the compiler}
+\subsection{Compiling}
+The compiler is written using \verb|OCaml|. It was designed to be built with \verb|dune|. It is itself separated into two components:
+
+\begin{itemize}
+\item A library, located in \verb|lib/| were all the work is made. Its entrypoint is \verb|lib/main.ml|. It is fully documented using \verb|odoc|. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
+\begin{minted}{shell}
+dune build @doc
+\end{minted}
+\item A front-end, located in \verb|bin/|, providing an executable able to launch the compilation of a file. It can be built using:
+\begin{minted}{shell}
+dune build bin/main.exe
+\end{minted}
+  The produced executable takes as argument the configuration file and the file itself. It outputs on stdout the result of the compilation or prints an error.
+\end{itemize}
+
+\subsection{Testing}
+Some efforts were made to be able to test the compiler. The test-suite is located in \verb|test/|. It can be ran using:
+\begin{minted}{shell}
+dune runtest
+\end{minted}
+For now, it ensures that files that must compile are indeed compiling, and file that must fail to compile are indeed failing.
 
 \end{document}
 %%% Local Variables:
