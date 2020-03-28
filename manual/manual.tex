@@ -197,7 +197,7 @@ The compilation is divided into 4 steps:
 The described syntax is parsed using the great Menhir: \url{http://gallium.inria.fr/~fpottier/menhir/}.
 
 \subsection{Typechecking}
-Programs are typechecked (using algorithm W) to ensure the validity of the file.
+Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
 
 \subsubsection{Guard inference}
 
@@ -205,12 +205,29 @@ Programs are typechecked (using algorithm W) to ensure the validity of the file.
 The compilation itself is divided into sub-steps.
 
 \paragraph{Inlining}
+All the definitions of \verb|Iota| are \emph{pure}, ie. without any effects, so one can always replace a call to a function by its body with proper substitution. This is the first thing the compiler do, since it allows to totally remove let-definitions. There is two sides effects:
+
+\begin{itemize}
+\item Unused definitions are not included in the result of the compilation. They still need to typecheck.
+\item The size of the produced formula can be large since many things will be duplicated.
+\end{itemize}
 
 \paragraph{Compilation of TLink}
+The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
 
 \paragraph{Normal form of formulas}
+Any formula can be put in \emph{normal form}, where negation is only present on leaves. This is done.
 
 \paragraph{Optimization}
+The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
+\begin{minted}{ocaml}
+parent<t1,t2>(x.f)
+\end{minted}
+by
+\begin{minted}{ocaml}
+x
+\end{minted}
+Note that this optimization is legal in the sense that, since the program typecheck, we know that \ocaml{x.f} is a valid object.
 
 \subsection{Verification}
 The resulting structure must satisfies some properties.
