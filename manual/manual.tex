@@ -22,81 +22,15 @@
 \section{Introduction}
 Iota is a programming language.
 
-\section{Syntax of the language}
-Nota Bene:
-\begin{itemize}
-\item \verb|[<rule>]| symbolise a list of \verb|<rule>|.
-\item \verb|[<rule> // <sep>]| symbolise a list of \verb|<rule>| separated by \verb|<sep>|.
-\end{itemize}
+\section{Semantics of the configuration file}
+A iota program needs to be configured. For this purpose, users need to provide a configuration file separated in three parts:
+\begin{enumerate}
+\item The definition of constants.
+\item The definition of types of objects.
+\item The definition of predicates about these types.
+\end{enumerate}
 
-Comments à-la-OCaml can be used everywhere.
-
-\subsection{Syntax of programs}
-
-\begin{grammar}
-  <lident> ::= [a-z][a-zA-Z0-9]*
-
-  <hident> ::= [A-Z][a-zA-Z0-9]*
-
-  <type> ::= <lident>
-
-  <term> ::= <lident>
-  \alt `parent<' <type> `,' <type> `>(' <term> `)'
-  \alt <term> `.' <lident>
-
-  <guard> ::= `Eq(' <term> `,' <term> `)'
-  \alt `Link(' <term> `,' <term> `)'
-  \alt `TLink<' <type> `,' <type> `>(' <term> `,' <term> `)'
-
-  <predicate> ::= <guard>
-  \alt `Has(' <term> `)'
-  \alt <hident> `(' <term> `)'
-
-  <formula> ::= <predicate>
-  \alt `+'<predicate>
-  \alt `not' <formula>
-  \alt <formula> `&&' <formula>
-  \alt <formula> `||' <formula>
-  \alt `(' <formula> `)'
-
-  <safe> ::= <formula>
-  \alt <lident>
-  \alt <safe> `&&' <safe>
-  \alt <safe> `||' <safe>
-  \alt `forall' <lident> <guard> `->' <safe>
-  \alt `exists' <lident> <guard> `&&' <safe>
-  \alt <safe> <safe>
-  \alt `(' <safe> `)'
-
-  <letdef> ::= \lit{let} <lident> [<lident>] \lit{=} <safe>
-
-  <general> ::=
-  <guard> \lit{->} <general>
-  \alt \lit{=>} <formula>
-
-  <program> ::=
-  [<letdef>] \lit{in} [<safe> // \lit{;}] \lit{ensure} [<general> // \lit{;}] \lit{maintain} [<general> // \lit{;}]
-
-\end{grammar}
-
-\subsection{Syntax of configuration file}
-\begin{grammar}
-  <constants> ::=
-  \lit{let} \lit{maxprof} \lit{=} <int>
-
-  <typedef> ::=
-  \lit{type} <lident>
-  \alt \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
-
-  <preddef> ::=
-  \lit{static} <hident> \lit{about} <lident>
-  \alt \lit{dynamic} <hident> \lit{about} <lident>
-
-  <config> ::=
-  <constants> [<typedef>] [<preddef>]
-\end{grammar}
-
-\subsection{Semantics of the configuration file}
+The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \subsection{The maxporf parameter}
 All trees have \emph{bound} size, thus one must specify the maximum size of a tree.
 
@@ -136,6 +70,15 @@ This file declares two types:
 \end{itemize}
 
 \section{Semantics of a iota file}
+Here is given semantics to the syntax fully described in Section \ref{subsec:syntaxprog}.
+A program is a file composed of four parts:
+
+\begin{enumerate}
+\item A list of let-definitions
+\item A list of formulas (which may use the above definitions)
+\item A list of formulas (which may use the above definitions)
+\item A list of formulas (which may use the above definitions)
+\end{enumerate}
 
 \subsection{Propositional formulas}
 All iota files are \emph{in fine} a list of simple formulas.
@@ -254,6 +197,81 @@ Some efforts were made to be able to test the compiler. The test-suite is locate
 dune runtest
 \end{minted}
 For now, it ensures that files that must compile are indeed compiling, and file that must fail to compile are indeed failing.
+
+\section{Syntax of the language}
+Nota Bene:
+\begin{itemize}
+\item \verb|[<rule>]| symbolise a list of \verb|<rule>|.
+\item \verb|[<rule> // <sep>]| symbolise a list of \verb|<rule>| separated by \verb|<sep>|.
+\end{itemize}
+
+Comments à-la-OCaml can be used everywhere.
+
+\subsection{Syntax of programs}
+\label{subsec:syntaxprog} Here is a BNF syntax for a iota program.
+\begin{grammar}
+  <lident> ::= [a-z][a-zA-Z0-9]*
+
+  <hident> ::= [A-Z][a-zA-Z0-9]*
+
+  <type> ::= <lident>
+
+  <term> ::= <lident>
+  \alt `parent<' <type> `,' <type> `>(' <term> `)'
+  \alt <term> `.' <lident>
+
+  <guard> ::= `Eq(' <term> `,' <term> `)'
+  \alt `Link(' <term> `,' <term> `)'
+  \alt `TLink<' <type> `,' <type> `>(' <term> `,' <term> `)'
+
+  <predicate> ::= <guard>
+  \alt `Has(' <term> `)'
+  \alt <hident> `(' <term> `)'
+
+  <formula> ::= <predicate>
+  \alt `+'<predicate>
+  \alt `not' <formula>
+  \alt <formula> `&&' <formula>
+  \alt <formula> `||' <formula>
+  \alt `(' <formula> `)'
+
+  <safe> ::= <formula>
+  \alt <lident>
+  \alt <safe> `&&' <safe>
+  \alt <safe> `||' <safe>
+  \alt `forall' <lident> <guard> `->' <safe>
+  \alt `exists' <lident> <guard> `&&' <safe>
+  \alt <safe> <safe>
+  \alt `(' <safe> `)'
+
+  <letdef> ::= \lit{let} <lident> [<lident>] \lit{=} <safe>
+
+  <general> ::=
+  <guard> \lit{->} <general>
+  \alt \lit{=>} <formula>
+
+  <program> ::=
+  [<letdef>] \lit{in} [<safe> // \lit{;}] \lit{ensure} [<general> // \lit{;}] \lit{maintain} [<general> // \lit{;}]
+
+\end{grammar}
+
+\subsection{Syntax of configuration file}
+\label{subsec:syntaxconfig} Here is a BNF syntax for the configuration file.
+\begin{grammar}
+  <constants> ::=
+  \lit{let} \lit{maxprof} \lit{=} <int>
+
+  <typedef> ::=
+  \lit{type} <lident>
+  \alt \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
+
+  <preddef> ::=
+  \lit{static} <hident> \lit{about} <lident>
+  \alt \lit{dynamic} <hident> \lit{about} <lident>
+
+  <config> ::=
+  <constants> [<typedef>] [<preddef>]
+\end{grammar}
 
 \end{document}
 %%% Local Variables:
