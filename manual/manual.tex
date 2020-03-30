@@ -20,7 +20,7 @@
 \tableofcontents
 
 \section{Introduction}
-Iota is a programming language.
+Iota is a programming language targeting the logic developed in Husson's thesis \cite{husson}. More specifically, it targets a ``safe'' subset of Husson's logic (section 5).
 
 \section{Semantics of the configuration file}
 A iota program needs to be configured. For this purpose, users need to provide a configuration file separated in three parts:
@@ -81,7 +81,6 @@ A program is a file composed of four parts:
 \end{enumerate}
 
 \subsection{Propositional formulas}
-All iota files are \emph{in fine} a list of simple formulas.
 
 \paragraph{Literals}
 Formulas are about literals. A iota literal is either:
@@ -125,7 +124,17 @@ Then, one can construct first-order formulas using the two following structures:
 Notice that each quantifies variable is \emph{guarded}.
 
 \subsection{Writing programs}
-Now, we can wire up all these definitions using a standard let-syntax.
+Now, we can wire up all these definitions using a standard let-syntax. Let-definitions are of the following form:
+\begin{minted}{ocaml}
+let e x = E(x)
+let f h x y = (h x) && (e y)
+\end{minted}
+There is a few things to note
+\begin{itemize}
+\item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
+\item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsubsec:guardinfer}).
+\item The language is \emph{high-order}, meaning that one definition can take an other definition as an argument.
+\end{itemize}
 
 \section{The compilation back-end}
 The compilation is divided into 4 steps:
@@ -137,13 +146,21 @@ The compilation is divided into 4 steps:
 \end{enumerate}
 
 \subsection{Parsing}
-The described syntax is parsed using the great Menhir (\url{http://gallium.inria.fr/~fpottier/menhir/}).
+The described syntax is parsed using the great Menhir\cite{menhir}.
 
 \subsection{Typechecking}
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
 
 \subsubsection{Guard inference}
-
+\label{subsubsec:guardinfer}
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in Iota, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some very simple heuristics are used, and one can write a definition such as:
+\begin{minted}{ocaml}
+let f u x = Eq(x,z) && Link(x,z) -> u
+\end{minted}
+which will be compiled to:
+\begin{minted}{ocaml}
+let f u x = exists z Eq(x,z) && Link(x,z) -> u
+\end{minted}
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
 
@@ -180,7 +197,7 @@ The resulting structure must satisfies some properties.
 The compiler is written using \verb|OCaml|. It was designed to be built with \verb|dune|. It is itself separated into two components:
 
 \begin{itemize}
-\item A library, located in \verb|lib/| were all the work is made. Its entrypoint is \verb|lib/main.ml|. It is fully documented using \verb|odoc|. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
+\item A library, located in \verb|lib/| were all the work is made. Its entrypoint is \verb|lib/main.ml|. It is fully documented using odoc\cite{odoc}. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
 \begin{minted}{shell}
 dune build @doc
 \end{minted}
@@ -272,6 +289,9 @@ Comments à-la-OCaml can be used everywhere.
   <config> ::=
   <constants> [<typedef>] [<preddef>]
 \end{grammar}
+
+\bibliographystyle{plain}
+\bibliography{publications}
 
 \end{document}
 %%% Local Variables:
