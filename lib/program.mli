@@ -16,9 +16,9 @@ type rbinpred =
 val string_of_rbinpred : rbinpred -> string
 
 type 'a var =
-  | V of 'a
-  | Parent of string * string * 'a var
-  | Func of string * int option * 'a var
+  | V of 'a (** A name *)
+  | Parent of string * string * 'a var (** The parent of a given variable, typed *)
+  | Func of string * int option * 'a var (** A function application (the function itself is maybe from a multiple definition) *)
 
 val string_of_var : ('a -> string) -> 'a var -> string
 val map_var : ('a -> 'b) -> 'a var -> 'b var
