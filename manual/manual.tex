@@ -38,8 +38,12 @@ All trees have \emph{bound} size, thus one must specify the maximum size of a tr
 Nodes, leaves and some operations on trees are \emph{typed}.
 \begin{itemize}
 \item Types without accessors. They will represent leaves.
-\item Types with accesors. They will represent nodes. Each accessor is composed by a name and a type.
-  This indicates the type of the child and how to access it.
+\item Types with accessors (they will represent nodes). There is two type of accessors:
+  \begin{itemize}
+  \item A simple accessor composed by a name and a type.
+  \item Multiple accessors, composed by a name, a number and a type. The syntax \ocaml{10 f to site} will allow the use, on a variable \ocaml{x}, of \ocaml{x.f:0}, \ocaml{x.f:1}, to \ocaml{x.f:9}. This is semantically equivalent to define 10 different accessors.
+  \end{itemize}
+  They both indicates the type of children and how to access it.
 \end{itemize}
 
 \subsection{Predicates}
@@ -235,6 +239,7 @@ Comments à-la-OCaml can be used everywhere.
 
   <term> ::= <lident>
   \alt `parent<' <type> `,' <type> `>(' <term> `)'
+  \alt <term> `.' <lident> `:' <int>
   \alt <term> `.' <lident>
 
   <guard> ::= `Eq(' <term> `,' <term> `)'
@@ -278,9 +283,13 @@ Comments à-la-OCaml can be used everywhere.
   <constants> ::=
   \lit{let} \lit{maxprof} \lit{=} <int>
 
+  <accessor> ::=
+  <lident> \lit{to} <type>
+  \alt <int> <lident> \lit{to} <type>
+
   <typedef> ::=
   \lit{type} <lident>
-  \alt \lit{type} <lident> \lit{=} [<lident> \lit{to} <type> // \lit{|} ]
+  \alt \lit{type} <lident> \lit{=} [<accessor> // \lit{|}]
 
   <preddef> ::=
   \lit{static} <hident> \lit{about} <lident>
