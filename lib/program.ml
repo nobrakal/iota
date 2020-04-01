@@ -13,7 +13,7 @@ type rbinpred =
 type 'a var =
   | V of 'a
   | Parent of string * string * 'a var (* string for the expected type *)
-  | Func of string * 'a var
+  | Func of string * int option * 'a var
 
 type ('a,'b) guard = 'b * 'a var * 'a var
 
@@ -59,7 +59,7 @@ let map_var f x =
   let rec aux = function
     | V x -> V (f x)
     | Parent (s1,s2,x) -> Parent (s1,s2,aux x)
-    | Func (s,x) -> Func (s, aux x)
+    | Func (s,i,x) -> Func (s,i, aux x)
   in aux x
 
 let map_lit f x = match x with
@@ -76,7 +76,7 @@ let rec extract_var x =
   match x with
   | V x -> x
   | Parent (_,_,x) -> extract_var x
-  | Func (_,x) -> extract_var x
+  | Func (_,_,x) -> extract_var x
 
 let fold_formula l u b =
   let rec aux = function
@@ -100,7 +100,12 @@ let string_of_var s =
   let rec aux = function
   | V x -> s x
   | Parent (s1,s2,x) -> "parent<" ^ s1  ^ "," ^ s2 ^ ">" ^ paren (aux x)
-  | Func (s,x) -> aux x ^ "." ^ s
+  | Func (s,i,x) ->
+     let acc =
+       match i with
+       | None -> ""
+       | Some i -> ":" ^ string_of_int i in
+     aux x ^ "." ^ s ^ acc
   in aux
 
 let string_of_binpred = function

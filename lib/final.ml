@@ -117,6 +117,12 @@ let lit' = function
      | Ok x -> Ok (Dyn (b,x))
      | Error x -> Error (b,x)
 
+let extract_possible_child x =
+  let open Config in function
+  | Simple (f,ft) -> [Func (f,None,x),ft]
+  | Multiple (f,i,ft) ->
+     List.init i (fun i -> Func (f,Some i,x),ft)
+
 let bind x f = List.(concat (map f x))
 
 let rec iter_bind n x f =
@@ -124,13 +130,13 @@ let rec iter_bind n x f =
   then x
   else iter_bind (n-1) (bind x f) f
 
-let fold_paths ~maxprof ~types fold link x y =
+let fold_paths ~maxprof ~(types : Config.ty_dec list) fold link x y =
   let link x y = link (fst x) (fst y) in
   let paths x =
     iter_bind maxprof [x]
       (fun (x,xt) ->
         match List.assoc_opt xt types with
-        | Some xs -> List.map (fun (f,ft) -> Func (f,x),ft) xs
+        | Some xs -> List.(concat (map (extract_possible_child x) xs))
         | None -> failwith "TODO: unknown type") in
   match paths x, paths y with
   | [],_ | _,[] -> assert false
@@ -154,9 +160,9 @@ let remove_tlink ~maxprof ~types f =
 
 let rec simpl_parent_func = function
   | V x -> V x
-  | Parent (_,_,Func(_,x)) -> simpl_parent_func x
+  | Parent (_,_,Func(_,_,x)) -> simpl_parent_func x
   | Parent (s1,s2,x) -> Parent (s1,s2,simpl_parent_func x)
-  | Func (f,x) -> Func (f, simpl_parent_func x)
+  | Func (f,i,x) -> Func (f,i,simpl_parent_func x)
 
 let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
 

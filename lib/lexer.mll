@@ -61,6 +61,7 @@ rule token = parse
   | "not"    { NOT }
 
   | "."      { DOT }
+  | ":"      { TWODOT }
 
   | "Has"    { HAS }
   | "TLink"  { TLINK }

@@ -21,7 +21,7 @@
 
 %token ARROW SEMICOLON ";" COMMA ","
 %token BIGARROW
-%token DOT "."
+%token DOT "." TWODOT ":"
 
 %token LET
 %token IN
@@ -111,7 +111,8 @@ guard:
 term:
 | x=LowerId { V x }
 | PARENT "<" s1=LowerId "," s2=LowerId ">" "(" x=term ")" { Parent (s1,s2,x) }
-| x=term "." y=LowerId { Func (y,x) }
+| x=term "." y=LowerId ":" i=Int { Func (y,Some i,x) }
+| x=term "." y=LowerId { Func (y,None,x) }
 
 general:
 | xs=separated_list(ARROW,guard) BIGARROW x=formula { General (xs,x) }
@@ -137,7 +138,9 @@ let type_elem :=
   | TYPE; x=LowerId; {(x,[])}
   | TYPE; x=LowerId; EQ; xs=separated_nonempty_list(GUARD,accessor); {(x,xs)}
 
-accessor: x=LowerId TO y=LowerId {(x,y)}
+accessor:
+  | x=LowerId TO y=LowerId {Simple (x,y)}
+  | i=Int x=LowerId TO y=LowerId {Multiple (x,i,y)}
 
 predicate:
 | STATIC  x=UpperId ABOUT y=LowerId {(false,x,y)}

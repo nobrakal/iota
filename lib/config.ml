@@ -1,7 +1,8 @@
 open Utils
 
-(** func name and type *)
-type accessor = string * string
+type accessor =
+  | Simple of string * string (** func name and type *)
+  | Multiple of string * int * string (** func name, a number of child and type *)
 
 (** name and possible children *)
 type ty_dec = string * accessor list

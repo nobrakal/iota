@@ -130,6 +130,37 @@ module Make (Manip : Manip) = struct
     let vars = StringSet.fold (fun x xs -> x::xs) vars [] in
     S (vars,t)
 
+  let extract_type =
+    let open Config in
+    function
+    | Simple (_,t) | Multiple (_,_,t) -> t
+
+  let get_accessor_type' f i xs =
+    let open Config in
+    let test = function
+      | Simple (n,_) -> f = n
+      | Multiple (n,limit,_) ->
+         match i with
+         | None -> false
+         | Some i ->
+            f = n && (i >=0 && i < limit) in
+    let aux acc x =
+      match acc with
+      | None -> if test x then Some (extract_type x) else None
+      | _ -> acc in
+    List.fold_left aux None xs
+
+  let get_accessor_type f i types =
+    let aux acc (start,xs) =
+      match acc with
+      | None ->
+         Option.map (fun x -> start,x) (get_accessor_type' f i xs)
+      | _ -> acc in
+    List.fold_left aux None types
+
+  let exists_end_type endt xs =
+    List.exists (fun x -> extract_type x = endt) xs
+
   let ti_var ~types env x =
     let rec aux x =
       match x with
@@ -137,21 +168,20 @@ module Make (Manip : Manip) = struct
          begin match M.find_opt x env with
          | None -> raise (Te (UnboundVar x))
          | Some t -> instanciate t,Subst.empty end
-      | Func (f,x) ->
+      | Func (f,i,x) ->
          let tx,sx = aux x in
-         begin match List.find_opt (fun (_,xs) -> List.exists (fun (n,_) -> f = n) xs) types with
-         | Some (start,xs) ->
-            let endt = List.assoc f xs in
+         begin match get_accessor_type f i types with
+         | Some (start,endt) ->
             let s = unify tx (Litt start) in
             (Litt endt),(compose_subst s sx)
          | None -> failwith "todo: unbound function" end
       | Parent (startt,endt,x) ->
          let tx,sx = aux x in
-         begin match List.find_opt (fun (x,xs) -> x=startt && List.exists (fun (_,n) -> endt = n) xs) types with
-         | Some _ ->
+         if List.exists (fun (x,xs) -> x=startt && exists_end_type endt xs) types
+          then
             let s = unify tx (Litt endt) in
             (Litt startt),(compose_subst s sx)
-         | None -> failwith "Undefined parent" end
+         else failwith "Undefined parent"
     in aux x
 
   let variables_of_lit = function
