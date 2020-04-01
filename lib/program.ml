@@ -75,8 +75,7 @@ let map_lit f x = match x with
 let rec extract_var x =
   match x with
   | V x -> x
-  | Parent (_,_,x) -> extract_var x
-  | Func (_,_,x) -> extract_var x
+  | Parent (_,_,x) | Func (_,_,x) -> extract_var x
 
 let fold_formula l u b =
   let rec aux = function
@@ -232,17 +231,19 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   module M = Map.Make(V)
   let to_list s = S.fold (fun x y -> x::y) s []
 
+  let fold_fomula_union f x =
+    fold_formula f (fun x -> x) (fun _ -> S.union) x
+
   let variables_of_dynamic = function
-    | Has x -> S.singleton (extract_var x)
+    | Has x | Other (_,x) -> S.singleton (extract_var x)
     | Bin (_,x,y) -> S.of_list [extract_var x;extract_var y]
-    | Other (_,x) -> S.singleton (extract_var x)
 
   let variables_of_lit = function
     | Dyn (_,x) -> variables_of_dynamic x
     | Stat (_,x) -> S.singleton (extract_var x)
 
   let variables_of_formula x =
-    fold_formula variables_of_lit (fun x -> x) (fun _ -> S.union) x
+    fold_fomula_union variables_of_lit x
 
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 
@@ -250,17 +251,15 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Quantif (_,_,f,x)  -> S.union (variables_of_guard f) (variables_of_safe x)
-    | Formula f ->
-       fold_formula variables_of_safe (fun x -> x) (fun _ -> S.union) f
+    | Quantif (_,_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
+    | Formula f -> fold_fomula_union variables_of_safe f
 
   let rec fv_of_safe = function
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton x
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Quantif (_,u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
-    | Formula f ->
-       fold_formula fv_of_safe (fun x -> x) (fun _ -> S.union) f
+    | Formula f -> fold_fomula_union fv_of_safe  f
 
   let fv_of_def (Def (_,xs,x)) =
     S.diff (fv_of_safe x) (S.of_list xs)

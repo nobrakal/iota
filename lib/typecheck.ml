@@ -18,9 +18,16 @@ let rec string_of_monoty = function
 
 type scheme = S of string list * monoty
 
-let internal_counter = ref 0
+let fold_opt f xs =
+  let run_on_none acc x =
+    match acc with
+    | None -> f x
+    | _ -> acc in
+  List.fold_left run_on_none None xs
 
-let fresh_ty () =
+let fresh_ty =
+  let internal_counter = ref 0 in
+  fun () ->
   internal_counter := !internal_counter + 1;
   V ("_" ^ string_of_int ! internal_counter)
 
@@ -35,10 +42,11 @@ let fv_of_scheme (S (xs,x)) =
 let scheme_of_mono x = S ([],x)
 
 let apply_subst_ty subst =
-  let rec aux = function
-    | Litt _ | Safet as t -> t
+  let rec aux t =
+    match t with
+    | Litt _ | Safet -> t
     | Arrow (x,y) -> Arrow (aux x, aux y)
-    | V x as t ->
+    | V x ->
        match Subst.find_opt x subst with
        | None -> t
        | Some x -> x in
@@ -77,8 +85,6 @@ let unify x y =
     | V x,y | y, V x -> bindvar x y
     | _ -> raise Exit
   in aux (x,y)
-
-let ty_safe = Safet
 
 let applys xs fv =
   List.fold_right (fun x acc -> Arrow (x,acc)) xs fv
@@ -144,19 +150,14 @@ module Make (Manip : Manip) = struct
          | None -> false
          | Some i ->
             f = n && (i >=0 && i < limit) in
-    let aux acc x =
-      match acc with
-      | None -> if test x then Some (extract_type x) else None
-      | _ -> acc in
-    List.fold_left aux None xs
+    let aux x =
+      if test x then Some (extract_type x) else None  in
+    fold_opt aux xs
 
   let get_accessor_type f i types =
-    let aux acc (start,xs) =
-      match acc with
-      | None ->
-         Option.map (fun x -> start,x) (get_accessor_type' f i xs)
-      | _ -> acc in
-    List.fold_left aux None types
+    let aux (start,xs) =
+      Option.map (fun x -> start,x) (get_accessor_type' f i xs) in
+    fold_opt aux types
 
   let exists_end_type endt xs =
     List.exists (fun x -> extract_type x = endt) xs
@@ -188,9 +189,8 @@ module Make (Manip : Manip) = struct
     | Stat (_,x) -> [x]
     | Dyn (_,x) ->
        match x with
-       | Has x -> [x]
+       | Has x | Other (_,x) -> [x]
        | Bin (_,x,y) -> [x; y]
-       | Other (_,x) -> [x]
 
   let verif_pred ~predicates xs =
     function
@@ -225,7 +225,7 @@ module Make (Manip : Manip) = struct
   let ti_safe ~predicates ~types env x =
     let rec aux env = function
       | Leaf x ->
-         ty_safe,ti_lit ~predicates ~types env x
+         Safet,ti_lit ~predicates ~types env x
       | Var x ->
          let t =
            match M.find_opt x env with
@@ -242,10 +242,10 @@ module Make (Manip : Manip) = struct
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
          let subst = ti_lit ~predicates ~types nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
-         let s = try_unify t ty_safe in
-         ty_safe,union s (union subst b)
+         let s = try_unify t Safet in
+         Safet,union s (union subst b)
       | Formula f ->
-         fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> ty_safe, union x y) f
+         fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> Safet, union x y) f
     in aux env x
 
   let type_of_def ~predicates ~types env args body =
@@ -290,15 +290,11 @@ module Make (Manip : Manip) = struct
          let fv = fv_of_def d in
          let perm = permutation (Seq.fold_left (fun y x -> x::y) [] (S.to_seq fv)) in
          let opt =
-           List.fold_left
-             (fun acc x ->
-               match acc with
-               | Some _ -> acc
-               | None ->
-                  Option.map
-                    (fun xs -> let n = newformula xs in (n,type_of_def ~predicates ~types env args n))
-                    (try_permut x)
-             ) None perm in
+           let aux x =
+             Option.map
+               (fun xs -> let n = newformula xs in (n,type_of_def ~predicates ~types env args n))
+               (try_permut x) in
+           fold_opt aux perm in
          begin match opt with
          | None -> raise e
          | Some x -> x end
@@ -323,8 +319,8 @@ module Make (Manip : Manip) = struct
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
       let t = fst (ti_safe ~predicates ~types env x) in
-      if t <> ty_safe
-      then raise (Te (WrongType (t,ty_safe))) in
+      if t <> Safet
+      then raise (Te (WrongType (t,Safet))) in
     List.iter aux xs
 
   let typecheck_program ~predicates ~types ({vars; safe; _} as e) =
