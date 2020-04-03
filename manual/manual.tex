@@ -50,7 +50,7 @@ Nodes, leaves and some operations on trees are \emph{typed}. These types are all
 
 \subsection{Predicates}
 \label{subsec:predicates}
-Finally, one have to define predicates. A predicate gives information about a node of some type.
+Finally, one have to define predicates. A predicate gives information about a node of some type. See Section \ref{para:predicates} for more information.
 
 \subsection{Example}
 Here is a valid configuration file:
@@ -80,13 +80,13 @@ This file declares three types:
 
 \section{Semantics of a \Iota file}
 Here is given semantics to the syntax fully described in Section \ref{subsec:syntaxprog}.
-A program is a file composed of four parts:
+As described in Husson's thesis, a program is a file composed of four parts:
 
 \begin{enumerate}
 \item A list of let-definitions
 \item A list of formulas (which may use the above definitions)
-\item A list of formulas (which may use the above definitions)
-\item A list of formulas (which may use the above definitions)
+\item A list of formulas (which may use the above definitions) that must be ensured.
+\item A list of formulas (which may use the above definitions) that must be maintained.
 \end{enumerate}
 
 \subsection{Propositional formulas}
@@ -100,11 +100,12 @@ Formulas are about literals. A \Iota literal is either:
 \end{itemize}
 
 \paragraph{Predicates}
+\label{para:predicates}
 Predicates can be used to extract information about literals. Some predicates are bundled into the \Iota syntax itself:
 \begin{itemize}
 \item \ocaml{Eq} is a binary predicate expressing the fact that two literals are equals. It can be applied to literals of any types.
 \item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types.
-\item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees from the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
+\item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees of the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
 \item \ocaml{Has} is a unary predicate expressing the \emph{presence} of a literal. It can be applied to literal of any types.
 \end{itemize}
 
@@ -148,6 +149,15 @@ There is a few things to note
 \item The language is \emph{high-order}, meaning that one definition can take an other definition as an argument.
 \end{itemize}
 
+\subsection{General parts}
+A program is optionally followed by two lists:
+\begin{enumerate}
+\item A list of formulas that me be \emph{ensured}.
+\item A list of formulas that must be \emph{maintained}.
+\end{enumerate}
+
+This lists are composed of formulas are universally quantified and must respect Husson's criterion.
+
 \subsection{Examples}
 \begin{minted}[frame=lines]{ocaml}
 let activate_and_link x y = Link (x.f, y.g) && +Active(x)
@@ -182,11 +192,11 @@ Programs are typechecked (using algorithm W) to ensure the validity of the file.
 \label{subsubsec:guardinfer}
 When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some very simple heuristics are used, and one can write a definition such as:
 \begin{minted}{ocaml}
-let f u x = Eq(x,z) && Link(x,z) -> u
+let f x = Eq(x,z) && Link(x,z)
 \end{minted}
 which will be compiled to:
 \begin{minted}{ocaml}
-let f u x = exists z Eq(x,z) && Link(x,z) -> u
+let f x = exists z Eq(x,z) && Link(x,z)
 \end{minted}
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
@@ -204,7 +214,7 @@ All the definitions of \Iota are \emph{pure}, ie. without any effects, so one ca
 The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
 
 \paragraph{Normal form of formulas}
-Any formula can be put in \emph{normal form}, where negation is only present on leaves. This is done.
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done.
 
 \paragraph{Optimization}
 The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
@@ -241,7 +251,7 @@ Some efforts were made to be able to test the compiler. The test-suite is locate
 \begin{minted}{shell}
 dune runtest
 \end{minted}
-For now, it ensures that files that must compile are indeed compiling, and file that must fail to compile are indeed failing.
+For now, it ensures that files that must compile are indeed compiling, and files that must fail to compile are indeed failing.
 
 \section{Syntax of the language}
 Nota Bene:
