@@ -1,4 +1,5 @@
 open Program
+open Gfinal
 
 (** This module
 - Runs algorithm W on the code
@@ -25,7 +26,7 @@ module type Typecheck =
 
     val typecheck_program :
       predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t program,type_error) result
+      types:(Config.ty_dec list) -> t program -> (t gfinal_program,type_error) result
   end
 
 

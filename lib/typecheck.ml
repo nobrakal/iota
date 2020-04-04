@@ -1,5 +1,6 @@
 open Program
 open Utils
+open Gfinal
 
 module Subst = Map.Make(String)
 
@@ -17,13 +18,6 @@ let rec string_of_monoty = function
   | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
 
 type scheme = S of string list * monoty
-
-let fold_opt f xs =
-  let run_on_none acc x =
-    match acc with
-    | None -> f x
-    | _ -> acc in
-  List.fold_left run_on_none None xs
 
 let fresh_ty =
   let internal_counter = ref 0 in
@@ -102,7 +96,7 @@ module type Typecheck =
 
     val typecheck_program :
       predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t program,type_error) result
+      types:(Config.ty_dec list) -> t program -> (t gfinal_program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -255,53 +249,19 @@ module Make (Manip : Manip) = struct
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
     t,s
 
-  (* permutations *)
-  let distribute c l =
-    let rec insert acc1 acc2 = function
-      | [] -> acc2
-      | hd::tl ->
-         insert (hd::acc1) ((List.rev_append acc1 (hd::c::tl)) :: acc2) tl
-    in
-    insert [] [c::l] l
-
-  let rec permutation = function
-    | [] -> [[]]
-    | hd::tl ->
-       List.fold_left (fun acc x -> List.rev_append (distribute hd x) acc) [] (permutation tl)
-  (* *)
-
-  module GI = Guard_inference.Make(Manip)
-
-  (* We also quantify for things that can be functions symbol *)
-  let ti_let ~predicates ~types env (Def (name,args,body) as d) =
-    let rec try_permut xs =
-      match xs with
-      | [] -> Some []
-      | x::xs ->
-         Option.bind
-           (GI.infer_guard x xs body)
-           (fun e -> Option.map (fun xs -> (x,e) :: xs) (try_permut xs)) in
-    let newformula xs =
-      List.fold_left (fun acc (e,y) -> Quantif (Exists,e,y,acc)) body xs in
+  let ti_let ~predicates ~types env (Def (name,args,body) as e) =
     let body,(t,s) =
-      try body,type_of_def ~predicates ~types env args body
+      try F body,type_of_def ~predicates ~types env args body
       with
-      | Te (UnboundVar _) as e ->
-         let fv = fv_of_def d in
-         let perm = permutation (Seq.fold_left (fun y x -> x::y) [] (S.to_seq fv)) in
-         let opt =
-           let aux x =
-             Option.map
-               (fun xs -> let n = newformula xs in (n,type_of_def ~predicates ~types env args n))
-               (try_permut x) in
-           fold_opt aux perm in
-         begin match opt with
-         | None -> raise e
-         | Some x -> x end
+      | Te (UnboundVar _)  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
+         let fvs = Manip.(to_list (fv_of_def e)) in
+         let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
+         let body' = Bracket (fvs,body) in
+         body',type_of_def ~predicates ~types nenv args body
       | x -> raise x in
     let t' = generalize (apply_subst_env s env) t in
     let env' = M.add name t' env in
-    Def (name,args,body),s,env'
+    GDef (name,args,body),s,env'
 
   let ti_lets ~predicates ~types env xs =
     let ds,s,env =
@@ -323,12 +283,16 @@ module Make (Manip : Manip) = struct
       then raise (Te (WrongType (t,Safet))) in
     List.iter aux xs
 
-  let typecheck_program ~predicates ~types ({vars; safe; _} as e) =
+  let typecheck_program ~predicates ~types {vars; safe; ensure; maintain} =
     let env = M.empty in
     try
-      let vars,s,env = ti_lets ~predicates ~types env vars in
+      let gvars,s,env = ti_lets ~predicates ~types env vars in
       let env = apply_subst_env s env in
-      verify_safe ~predicates ~types env safe; Ok {e with vars}
+      verify_safe ~predicates ~types env safe;
+      let gsafe = safe in
+      let gensure = ensure in
+      let gmaintain = maintain in
+      Ok {gvars;gsafe;gensure;gmaintain}
     with
     | Te x -> Error x
 end

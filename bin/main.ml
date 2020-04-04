@@ -7,6 +7,6 @@ let main configfile filename =
   | Error s ->
      Main.print_err s
   | Ok ast ->
-     Final_def.print_final ast
+     Final.print_final ast
 
 let () = main Sys.argv.(1) Sys.argv.(2)

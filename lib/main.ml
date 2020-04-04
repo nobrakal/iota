@@ -1,6 +1,7 @@
 module Manip = Program.Manip(String)
 module Structure = Structure.Make(Manip)
 module Typecheck = Typecheck.Make(Manip)
+module Gfinal = Gfinal.Make(Manip)
 
 open Config
 
@@ -9,6 +10,7 @@ type err =
   | Type of Typecheck.type_error
   | Parse of Program.parse_error
   | Structure of Structure.invalidity
+  | GuardInference of Gfinal.err
 
 let print_err x =
   let str =
@@ -20,6 +22,8 @@ let print_err x =
        "Parsing: " ^  Program.string_of_parse_error e
     | Structure e ->
        "Structure: " ^ Structure.string_of_invalidity e
+    | GuardInference e ->
+       "GuardInference: " ^ Gfinal.string_of_err (fun x -> x) e
   in Printf.eprintf "%s\n" str
 
 let config buf =
@@ -40,8 +44,11 @@ let main config lexbuf =
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)
-           let ast = Final.final_of_program ~maxprof:config.maxprof ~types:config.types ast in
-           (* Verify that the structure is valid *)
-           match Structure.validate_program ast with
-           | Some e -> Error (Structure e)
-           | None -> Ok ast
+           match Gfinal.run ast with
+           | Error e -> Error (GuardInference e)
+           | Ok ast ->
+              let ast = Final.final_of_program ~maxprof:config.maxprof ~types:config.types ast in
+              (* Verify that the structure is valid *)
+              match Structure.validate_program ast with
+              | Some e -> Error (Structure e)
+              | None -> Ok ast

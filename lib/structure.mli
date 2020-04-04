@@ -18,7 +18,7 @@ module type Structure =
   val string_of_invalidity : invalidity -> string
 
   (** Returns good iff guards are really guards and ensure and maintain are well-formed *)
-  val validate_program : t Final_def.final_program -> invalidity option
+  val validate_program : t Final.final_program -> invalidity option
   end
 
 module Make(M : Manip) : Structure with type t = M.t

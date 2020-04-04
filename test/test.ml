@@ -32,13 +32,13 @@ let compile_bad ttt x =
     | Error (Iota.Main.Structure _), Structure -> true
   | _ -> false
 
-let tt = Alcotest.testable (Fmt.of_to_string (Iota.Final_def.string_of_final)) ( = )
+let tt = Alcotest.testable (Fmt.of_to_string (Iota.Final.string_of_final)) ( = )
 
 let reentrant_compile x () =
   match compile x with
   | Error _ -> Alcotest.fail x
   | Ok y ->
-     match compile' (Lexing.from_string (Iota.Final_def.string_of_final y)) with
+     match compile' (Lexing.from_string (Iota.Final.string_of_final y)) with
      | Error _ -> Alcotest.fail x
      | Ok y' ->
      Alcotest.check tt x y y'
