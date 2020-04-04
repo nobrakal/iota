@@ -1,0 +1,8 @@
+let apply f x = f x
+let swap f y x = f x y
+
+let plink x y = +Link(x,y)
+
+in
+
+apply (swap plink x) y

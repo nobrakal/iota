@@ -1,0 +1,10 @@
+let activate_and_link x y = Link (x.f, y.g) && +Active(x)
+
+in
+
+Has(a.r:2) && (forall u Link(a,u) -> (E(u) || TLink<mol,mol>(x,u)));
+(activate_and_link x y) || (activate_and_link x z)
+
+ensure
+
+Link (z.f, w.g) => (E(z) -> (E(w) && Open (z.f)))
