@@ -22,4 +22,4 @@ val config : Lexing.lexbuf -> Config.config
 *)
 val main :
   Config.config ->
-  Lexing.lexbuf -> (string Final.final_program, err) result
+  Lexing.lexbuf -> (string Final_def.final_program, err) result
