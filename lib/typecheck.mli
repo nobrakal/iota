@@ -1,14 +1,26 @@
 open Program
-open Gfinal
 
 (** This module
 - Runs algorithm W on the code
 - Tries to infer missing guards
-*)
+ *)
+
+type ('a,'l) rich_pre_safe =
+  | F of ('a,'l) pre_safe
+  | Bracket of 'a list * ('a,'l) pre_safe (* existentially quantified variables, without guards *)
+
+type ('a,'l) rich_def =
+  | RDef of ('a * 'a list * ('a,'l) rich_pre_safe)
+
+type 'a typed_program =
+  { tvars : ('a, ('a, rbinpred) lit) rich_def list
+  ; tsafe : ('a, ('a, rbinpred) lit) pre_safe list
+  ; tensure : ('a, ('a, rbinpred) lit, rbinpred) general list
+  ; tmaintain : ('a, ('a, rbinpred) lit, rbinpred) general list }
 
 (** Type of monomorphic types *)
 type monoty =
-  | V of string (** Type variable *)
+  | Vt of string (** Type variable *)
   | Safet (** A safe expression *)
   | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
@@ -26,7 +38,7 @@ module type Typecheck =
 
     val typecheck_program :
       predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t gfinal_program,type_error) result
+      types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
   end
 
 

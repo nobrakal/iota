@@ -1,18 +1,30 @@
 open Program
 open Utils
-open Gfinal
+
+type ('a,'l) rich_pre_safe =
+  | F of ('a,'l) pre_safe
+  | Bracket of 'a list * ('a,'l) pre_safe (* existentially quantified variables, without guards *)
+
+type ('a,'l) rich_def =
+  | RDef of ('a * 'a list * ('a,'l) rich_pre_safe)
+
+type 'a typed_program =
+  { tvars : ('a, ('a, rbinpred) lit) rich_def list
+  ; tsafe : ('a, ('a, rbinpred) lit) pre_safe list
+  ; tensure : ('a, ('a, rbinpred) lit, rbinpred) general list
+  ; tmaintain : ('a, ('a, rbinpred) lit, rbinpred) general list }
 
 module Subst = Map.Make(String)
 
 (** Type of monomorphic types *)
 type monoty =
-  | V of string (** Type variable *)
+  | Vt of string (** Type variable *)
   | Safet (** A safe expression *)
   | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
 
 let rec string_of_monoty = function
-  | V x -> "'" ^ x
+  | Vt x -> "'" ^ x
   | Safet -> "Safe"
   | Litt l -> "Lit " ^ l
   | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
@@ -23,11 +35,11 @@ let fresh_ty =
   let internal_counter = ref 0 in
   fun () ->
   internal_counter := !internal_counter + 1;
-  V ("_" ^ string_of_int ! internal_counter)
+  Vt ("_" ^ string_of_int ! internal_counter)
 
 let rec fv_of_ty = function
   | Litt _ | Safet -> StringSet.empty
-  | V x -> StringSet.singleton x
+  | Vt x -> StringSet.singleton x
   | Arrow (x,y) -> StringSet.union (fv_of_ty x) (fv_of_ty y)
 
 let fv_of_scheme (S (xs,x)) =
@@ -40,7 +52,7 @@ let apply_subst_ty subst =
     match t with
     | Litt _ | Safet -> t
     | Arrow (x,y) -> Arrow (aux x, aux y)
-    | V x ->
+    | Vt x ->
        match Subst.find_opt x subst with
        | None -> t
        | Some x -> x in
@@ -60,7 +72,7 @@ let instanciate (S (xs,x)) =
   apply_subst_ty subst x
 
 let bindvar u t =
-  if (V u) = t
+  if (Vt u) = t
   then Subst.empty
   else
     let fv = fv_of_ty t in
@@ -76,7 +88,7 @@ let unify x y =
        compose_subst s1 s2
     | Safet, Safet -> Subst.empty
     | Litt x, Litt y when x = y -> Subst.empty
-    | V x,y | y, V x -> bindvar x y
+    | Vt x,y | y, Vt x -> bindvar x y
     | _ -> raise Exit
   in aux (x,y)
 
@@ -96,7 +108,7 @@ module type Typecheck =
 
     val typecheck_program :
       predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t gfinal_program,type_error) result
+      types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -261,7 +273,7 @@ module Make (Manip : Manip) = struct
       | x -> raise x in
     let t' = generalize (apply_subst_env s env) t in
     let env' = M.add name t' env in
-    GDef (name,args,body),s,env'
+    RDef (name,args,body),s,env'
 
   let ti_lets ~predicates ~types env xs =
     let ds,s,env =
@@ -286,13 +298,13 @@ module Make (Manip : Manip) = struct
   let typecheck_program ~predicates ~types {vars; safe; ensure; maintain} =
     let env = M.empty in
     try
-      let gvars,s,env = ti_lets ~predicates ~types env vars in
+      let tvars,s,env = ti_lets ~predicates ~types env vars in
       let env = apply_subst_env s env in
       verify_safe ~predicates ~types env safe;
-      let gsafe = safe in
-      let gensure = ensure in
-      let gmaintain = maintain in
-      Ok {gvars;gsafe;gensure;gmaintain}
+      let tsafe = safe in
+      let tensure = ensure in
+      let tmaintain = maintain in
+      Ok {tvars;tsafe;tensure;tmaintain}
     with
     | Te x -> Error x
 end

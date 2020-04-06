@@ -1,62 +1,30 @@
 open Program
-open Utils
+open Typecheck
+open Final_def
 
-(* Not and Exact *)
-type tag = N | E
-
-type ('a,'l) pre_fsafe =
-  | FLeaf of tag * 'l
-  | FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
-  | FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe
-
-let string_of_tag = function
-  | N -> "not "
-  | E -> ""
-
-let string_of_fsafe f e u =
-  let rec aux = function
-    | FLeaf (x,y) -> string_of_tag x ^ paren (f y)
-    | FQuantif (Forall,a,g,x) ->
-       "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ paren (aux x)
-    | FQuantif (Exists,a,g,x) ->
-       "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ paren (aux x)
-    | FBinop (b,x,y) -> paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
-  in aux u
-
-let print_fsafe f e x = print_endline (string_of_fsafe f e x)
-
-type 'a final_program =
-  { fsafe : ('a, ('a, binpred) lit) pre_fsafe list
-  ; fensure : ('a, ('a, binpred) lit, binpred) general list
-  ; fmaintain : ('a, ('a, binpred) lit, binpred) general list }
-
-let string_of_final ({fsafe; fensure; fmaintain} : string final_program) =
-  let string_of_list f xs = String.concat ";\n" @@
-    List.map f xs in
-  let id x = x in
-  string_of_list (string_of_fsafe (string_of_lit id string_of_binpred) id) fsafe
-  ^ "\nensure\n" ^
-  string_of_list (string_of_general (string_of_lit id string_of_binpred) id string_of_binpred) fensure
-  ^ "\nmaintain\n" ^
-   string_of_list (string_of_general (string_of_lit id string_of_binpred) id string_of_binpred) fmaintain
-
-let print_final x = print_endline (string_of_final x)
-
+(* intermediate language allowing bracket *)
+type ('a,'l) intermediary =
+  | IFormula of ('a,'l) intermediary formula
+  | ILeaf of 'l
+  | IVar of 'a
+  | IApply of ('a,'l) intermediary * ('a,'l) intermediary
+  | IQuantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) intermediary
+  | IBracket of 'a list *  ('a,'l) intermediary
 
 type ('a,'l) nf =
-  | Safe of ('a,'l) pre_safe
-  | Closure of 'a * 'a list * ('a,'l) pre_safe
+  | Safe of ('a,'l) intermediary
+  | Closure of 'a * 'a list * ('a,'l) intermediary
 
 let safe_of_nf = function
   | Safe x -> x
-  | Closure _ -> assert false
+  | _ -> assert false
 
 let join_closure x xs = function
   | Safe body -> Closure (x,xs,body)
   | Closure (y,ys,body) -> Closure (x,xs@(y::ys),body)
 
 let var_of_safe = function
-  | Safe (Var x) -> x
+  | Safe (IVar x) -> x
   | _ -> assert false
 
 let replace_vars vars x =
@@ -71,25 +39,26 @@ let negate_tag = function
 
 let rec negate x =
   match x with
-  | FLeaf (x,y) -> FLeaf (negate_tag x, y)
-  | FQuantif (q,x,b,f) ->
+  | `FLeaf (x,y) -> `FLeaf (negate_tag x, y)
+  | `FQuantif (q,x,b,f) ->
      let q = match q with
        | Forall -> Exists
        | Exists -> Forall in
-     FQuantif (q, x, b, negate f)
-  | FBinop (b,x,y) ->
+     `FQuantif (q, x, b, negate f)
+  | `FBinop (b,x,y) ->
      let b = match b with
        | And -> Or
        | Or -> And in
-     FBinop (b, negate x, negate y)
+     `FBinop (b, negate x, negate y)
+  | `FBracket _ -> failwith "TODO: Unhandled negation"
 
 (*  The program needs to typecheck ! *)
 let rec normal_form vars = function
-  | Leaf x -> Safe (Leaf (replace_vars vars x))
-  | Var x ->
+  | ILeaf x -> Safe (ILeaf (replace_vars vars x))
+  | IVar x ->
      begin try List.assoc x vars
-     with Not_found -> Safe (Var x) end
-  | Apply (x,y) ->
+     with Not_found -> Safe (IVar x) end
+  | IApply (x,y) ->
      begin match normal_form vars x with
      | Closure (arg,args,body) ->
         let y = normal_form vars y in
@@ -98,16 +67,32 @@ let rec normal_form vars = function
         begin match args with
         | [] -> body
         | x::xs -> join_closure x xs body end
-     | Safe x -> Safe (Apply (x,y)) end
-  | Quantif (q,x,f,y) ->
+     | Safe x -> Safe (IApply (x,y))
+     end
+  | IQuantif (q,x,f,y) ->
      let vars = List.remove_assoc x vars in
-     Safe (Quantif (q,x,f, safe_of_nf (normal_form vars y)))
-  | Formula f ->
-     Safe (Formula (map_formula (fun x -> safe_of_nf (normal_form vars x)) f))
+     Safe (IQuantif (q,x,f, safe_of_nf (normal_form vars y)))
+  | IFormula f ->
+     Safe (IFormula (map_formula (fun x -> safe_of_nf (normal_form vars x)) f))
+  | IBracket (fv,body) ->
+     let vars = List.fold_left (fun acc x -> List.remove_assoc x acc) vars fv in
+     Safe (IBracket (fv, safe_of_nf (normal_form vars body)))
+
+let rec inj_intermediate x =
+  match x with
+  | Leaf x -> ILeaf x
+  | Var x -> IVar x
+  | Apply (x,y) -> IApply (inj_intermediate x, inj_intermediate y)
+  | Quantif (q,x,f,y) -> IQuantif (q,x,f, inj_intermediate y)
+  | Formula f -> IFormula (map_formula inj_intermediate f)
 
 let inline_vars_in_vars vars =
-  let aux vars (Def (name,args,body)) =
-    let args' = List.map (fun x -> x,Safe (Var x)) args in
+  let aux vars (RDef (name,args,body)) =
+    let args' = List.map (fun x -> x,Safe (IVar x)) args in
+    let body =
+      match body with
+      | F body -> inj_intermediate body
+      | Bracket (fv,body) -> IBracket (fv,inj_intermediate body) in
     let body = normal_form (args'@vars) body in
     let closure =
       match args with
@@ -181,11 +166,12 @@ let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
 
 let simpl_parent_func_p = map_lit simpl_parent_func
 
-let rec simpl_parent_func_s x =
+let rec simpl_parent_func_s (x : ('a,'l) pre_fsafe) =
   match x with
-  | FLeaf (t,x) -> FLeaf (t, simpl_parent_func_p x)
-  | FQuantif (q,x,g,f) -> FQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
-  | FBinop (b,x,y) -> FBinop (b, simpl_parent_func_s x, simpl_parent_func_s y)
+  | `FLeaf (t,x) -> `FLeaf (t, simpl_parent_func_p x)
+  | `FQuantif (q,x,g,f) -> `FQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | `FBracket (xs,f) -> `FBracket (xs, simpl_parent_func_s f)
+  | `FBinop (b,x,y) -> `FBinop (b, simpl_parent_func_s x, simpl_parent_func_s y)
 
 let simpl_parent_func_g (General (xs,f)) =
   let xs = List.map simpl_parent_func_b xs in
@@ -198,20 +184,22 @@ let fsafe_of_safe ~maxprof ~types x =
     | (B g,x,y) -> f (g,x,y)
     | (TLink (s1,s2),x,y) ->
        let link x y = f (Link, x, y) in
-       let fold a b = FBinop (And, a, b) in
+       let fold a b = `FBinop (And, a, b) in
        fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
   let rec aux x =
     match x with
-    | Var _ | Apply _ ->
+    | IVar _ | IApply _ ->
        assert false
-    | Leaf y ->
-       fold_formula (fun x -> FLeaf (E,x)) negate (fun a b c -> FBinop (a,b,c)) (lit ~maxprof ~types y)
-    | Quantif (q,x,g,a) ->
-       quantif (fun g -> FQuantif (q, x, g, aux a)) g
-    | Formula f ->
+    | ILeaf y ->
+       fold_formula (fun x -> `FLeaf (E,x)) negate (fun a b c -> `FBinop (a,b,c)) (lit ~maxprof ~types y)
+    | IQuantif (q,x,g,a) ->
+       quantif (fun g -> `FQuantif (q, x, g, aux a)) g
+    | IFormula f ->
        fold_formula aux
          (fun x -> negate x)
-         (fun b x y -> FBinop (b,x,y)) f
+         (fun b x y -> `FBinop (b,x,y)) f
+    | IBracket (fv,body) ->
+       `FBracket (fv, aux body)
   in aux x
 
 let conj xs =
@@ -232,15 +220,20 @@ let remove_tlink_general ~maxprof ~types (General (xs,f)) =
   let xs = conj (List.map aux xs) in
   List.map (fun x -> General (x, f)) xs
 
-let final_of_program ~maxprof ~types ({vars;safe;ensure;maintain} : string program) : string final_program =
-  let vars = inline_vars_in_vars vars in
+let final_of_program ~maxprof ~types ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
+    :  string Final_def.pre_final_program =
+  let vars = inline_vars_in_vars tvars in
   let fsafe =
-    List.map
-      (fun x -> simpl_parent_func_s (fsafe_of_safe ~maxprof ~types (safe_of_nf (normal_form vars x)))) safe in
+    List.map (fun x ->
+        simpl_parent_func_s
+        @@ fsafe_of_safe ~maxprof ~types
+        @@ safe_of_nf
+        @@ normal_form vars
+        @@ inj_intermediate x) tsafe in
   let fensure =
     List.map simpl_parent_func_g
-      (bind ensure (fun x -> remove_tlink_general ~maxprof ~types x)) in
+      (bind tensure (fun x -> remove_tlink_general ~maxprof ~types x)) in
   let fmaintain =
     List.map simpl_parent_func_g
-      (bind maintain (fun x -> remove_tlink_general ~maxprof ~types x)) in
+      (bind tmaintain (fun x -> remove_tlink_general ~maxprof ~types x)) in
   {fsafe; fensure; fmaintain}

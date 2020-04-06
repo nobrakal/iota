@@ -1,5 +1,5 @@
 open Program
-open Final
+open Final_def
 
 type gen = Ensure | Maintain
 
@@ -14,7 +14,7 @@ module type Structure =
     val string_of_invalidity : invalidity -> string
 
     (** Retun good iff guards are really guards and ensure and maintain are well-formed *)
-    val validate_program : t Final.final_program -> invalidity option
+    val validate_program : t Final_def.final_program -> invalidity option
   end
 
 module Make(Manip : Manip) = struct
@@ -38,10 +38,10 @@ module Make(Manip : Manip) = struct
 
   let verify_guards x =
     let rec aux = function
-    | FLeaf _ -> true
-    | FQuantif (_,x,(_,a,b),phi) ->
+    | `FLeaf _ -> true
+    | `FQuantif (_,x,(_,a,b),phi) ->
        (a <> b) && (x = extract_var a || x = extract_var b) && aux phi
-    | FBinop (_,x,y) -> aux x && aux y
+    | `FBinop (_,x,y) -> aux x && aux y
     in aux x
 
   let extract_xvar_candidates_of x xs =

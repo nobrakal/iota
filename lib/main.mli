@@ -1,14 +1,14 @@
 module Manip : Program.Manip with type t = String.t
 module Structure : Structure.Structure with type t = String.t
 module Typecheck : Typecheck.Typecheck with type t = String.t
-module Gfinal : Gfinal.Guard_inference with type t = String.t
+module Guard_inference : Guard_inference.Guard_inference with type t = String.t
 
 type err =
   | Menhir
   | Type of Typecheck.type_error
   | Parse of Program.parse_error
   | Structure of Structure.invalidity
-  | GuardInference of Gfinal.err
+  | GuardInference of Guard_inference.err
 val print_err : err -> unit
 
 val config : Lexing.lexbuf -> Config.config
@@ -18,9 +18,10 @@ val config : Lexing.lexbuf -> Config.config
 + Parses it using Menhir.
 + Typechecks it (with {!Iota.Typecheck}).
 + Compiles it to a much simpler final object (with {!Iota.Final}).
++ Tries to infer some information (with {!Iota.Guard_inference})
 + Ensures its validty (with {!Iota.Structure}).
 
 *)
 val main :
   Config.config ->
-  Lexing.lexbuf -> (string Final.final_program, err) result
+  Lexing.lexbuf -> (string Final_def.final_program, err) result
