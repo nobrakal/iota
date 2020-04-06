@@ -145,7 +145,7 @@ let f h x y = (h x) && (e y)
 There is a few things to note
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
-\item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsubsec:guardinfer}).
+\item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsec:guardinfer}).
 \item The language is \emph{high-order}, meaning that one definition can take an other definition as an argument.
 \end{itemize}
 
@@ -174,11 +174,12 @@ Link (z.f, w.g) => (E(z) -> (E(w) && Open (z.f)))
 
 
 \section{The compilation back-end}
-The compilation is divided into 4 steps:
+The compilation is divided into 5 steps:
 \begin{enumerate}
 \item Parsing.
 \item Typechecking.
 \item Compilation itself.
+\item Guard inference.
 \item Verification of the resulting structure.
 \end{enumerate}
 
@@ -188,16 +189,6 @@ The described syntax is parsed using the great Menhir\cite{menhir}.
 \subsection{Typechecking}
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
 
-\subsubsection{Guard inference}
-\label{subsubsec:guardinfer}
-When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some very simple heuristics are used, and one can write a definition such as:
-\begin{minted}{ocaml}
-let f x = Eq(x,z) && Link(x,z)
-\end{minted}
-which will be compiled to:
-\begin{minted}{ocaml}
-let f x = exists z Eq(x,z) && Link(x,z)
-\end{minted}
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
 
@@ -226,6 +217,17 @@ by
 x
 \end{minted}
 Note that this optimization is legal in the sense that, since the program typecheck, we know that \ocaml{x.f} is a valid object.
+
+\subsection{Guard inference}
+\label{subsec:guardinfer}
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some very simple heuristics are used, and one can write a definition such as:
+\begin{minted}{ocaml}
+let f x = Eq(x,z) && Link(x,z)
+\end{minted}
+which will be compiled to:
+\begin{minted}{ocaml}
+let f x = exists z Eq(x,z) && Link(x,z)
+\end{minted}
 
 \subsection{Verification}
 The resulting structure must satisfies some properties.

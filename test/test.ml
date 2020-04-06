@@ -3,12 +3,13 @@ let prefix = "tests/"
 let good = "good"
 let bad = "bad"
 
-type ttt = Parsing | Typechecking | Structure
+type ttt = Parsing | Typechecking | Structure | Guard_Inference
 
 let string_of_ttt = function
   | Parsing -> "parsing"
   | Typechecking -> "typechecking"
   | Structure -> "structure"
+  | Guard_Inference -> "guard_inference"
 
 let config = Iota.Main.config (Lexing.from_channel (open_in (prefix ^ "config.hiota")))
 
@@ -29,7 +30,8 @@ let compile_bad ttt x =
   match compile x,ttt with
   | Error (Iota.Main.Type _), Typechecking
     | Error (Iota.Main.Parse _ | Iota.Main.Menhir), Parsing
-    | Error (Iota.Main.Structure _), Structure -> true
+    | Error (Iota.Main.Structure _), Structure
+    | Error (Iota.Main.GuardInference _), Guard_Inference -> true
   | _ -> false
 
 let tt = Alcotest.testable (Fmt.of_to_string (Iota.Final_def.string_of_final)) ( = )
@@ -75,4 +77,4 @@ let test_dir ttt =
 let () =
   let open Alcotest in
   run "Iota"
-    (test_dir Parsing @ test_dir Typechecking @ test_dir Structure)
+    (test_dir Parsing @ test_dir Typechecking @ test_dir Structure @ test_dir Guard_Inference)
