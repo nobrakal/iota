@@ -40,7 +40,7 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
       [v] must be free in [x]. *)
   let infer_guard v fv x =
     let fv = M.S.of_list fv in
-    let lit l =
+    let lit fv l =
       match l with
       | Stat _ | Dyn (true,_) -> None
       | Dyn (false,x) ->
@@ -60,16 +60,17 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
          match x with
          | None -> y
          | _ -> x in
-    let rec aux x = (* return (was_negated, guard) option *)
+    let rec aux fv x =
       match x with
-      | FBinop (b,x,y) -> binop b (aux x) (aux y)
-      | FQuantif _ -> None (* TODO verify *)
+      | FBinop (b,x,y) ->
+         binop b (aux fv x) (aux fv y)
+      | FQuantif (_,y,_,f) ->
+         aux (M.S.remove y fv) f
       | FLeaf (i,l) ->
          match i with
          | N -> None
-         | E -> lit l
-    in
-    aux x
+         | E -> lit fv l
+    in aux fv x
 
   let try_permut body xs =
     let rec aux xs =
