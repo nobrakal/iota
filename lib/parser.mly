@@ -42,6 +42,7 @@
 (*** PRIORITY ***)
 %left LOR
 %left LAND
+%left NOT
 
 %right ARROW
 
@@ -119,7 +120,7 @@ general:
 
 let mk_formula(atom) :=
   | x=atom; { x }
-  | NOT; "("; x=mk_formula(atom); ")"; { Not x }
+  | NOT; x=mk_formula(atom); { Not x }
   | x=mk_formula(atom); LAND; y=mk_formula(atom); { Binop (And,x,y) }
   | x=mk_formula(atom); LOR; y=mk_formula(atom); { Binop (Or,x,y) }
   | x=mk_formula(atom); ARROW; y=mk_formula(atom); { Binop (Or,Not x,y) }
