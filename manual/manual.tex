@@ -156,7 +156,7 @@ A program is optionally followed by two lists:
 \item A list of formulas that must be \emph{maintained}.
 \end{enumerate}
 
-This lists are composed of formulas are universally quantified and must respect Husson's criterion.
+This lists are composed of formulas are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
 
 \subsection{Examples}
 \begin{minted}[frame=lines]{ocaml}
@@ -230,7 +230,8 @@ let f x = exists z Eq(x,z) && Link(x,z)
 Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done here. Note that it was not possible to do it before, since we need to first infer guards to be able to negate them properly.
 
 \subsection{Verification}
-The resulting structure must satisfies some properties.
+\label{subsec:verification}
+The resulting structure must satisfies some properties. We must ensure that every guard is indeed a well formed guard, and that the two parts ``ensure'' and ``maintain'' are well formed. This pass only checks if these properties are respected.
 
 \section{About the compiler}
 \subsection{Compiling}
