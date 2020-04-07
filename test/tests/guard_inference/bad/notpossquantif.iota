@@ -1,0 +1,5 @@
+let f x = forall z Eq(z,x) -> (Eq (y,z) && E(y))
+
+in
+
+f x

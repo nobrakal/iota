@@ -65,7 +65,7 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
       | FBinop (b,x,y) ->
          binop b (aux fv x) (aux fv y)
       | FQuantif (_,y,_,f) ->
-         aux (M.S.remove y fv) f
+         aux (M.S.add y fv) f
       | FLeaf (i,l) ->
          match i with
          | N -> None
