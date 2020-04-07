@@ -5,15 +5,15 @@ open Utils
 type tag = N | E
 
 type ('a,'l) pre_fsafe =
-[ | `FLeaf of tag * 'l
-  | `FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
-  | `FBracket of 'a list * ('a,'l) pre_fsafe
-  | `FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe ]
+  PLeaf of 'l
+| PQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
+| PBracket of 'a list * ('a,'l) pre_fsafe
+| PFormula of ('a,'l) pre_fsafe formula
 
 type ('a,'l) fsafe =
-[ | `FLeaf of tag * 'l
-  | `FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) fsafe
-  | `FBinop of binop * ('a,'l) fsafe * ('a,'l) fsafe ]
+  FLeaf of tag * 'l
+| FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) fsafe
+| FBinop of binop * ('a,'l) fsafe * ('a,'l) fsafe
 
 let string_of_tag = function
   | N -> "not "
@@ -21,12 +21,12 @@ let string_of_tag = function
 
 let string_of_fsafe f e u =
   let rec aux = function
-    | `FLeaf (x,y) -> string_of_tag x ^ paren (f y)
-    | `FQuantif (Forall,a,g,x) ->
+    | FLeaf (x,y) -> string_of_tag x ^ paren (f y)
+    | FQuantif (Forall,a,g,x) ->
        "forall" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "->" ^ paren (aux x)
-    | `FQuantif (Exists,a,g,x) ->
+    | FQuantif (Exists,a,g,x) ->
        "exists" ^ space (e a) ^ string_of_guard e string_of_binpred g ^ space "&&" ^ paren (aux x)
-    | `FBinop (b,x,y) -> paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
+    | FBinop (b,x,y) -> paren (aux x) ^ space (string_of_binop b) ^ paren (aux y)
   in aux u
 
 let print_fsafe f e x = print_endline (string_of_fsafe f e x)

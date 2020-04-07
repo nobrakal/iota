@@ -8,16 +8,15 @@ type tag =
   | E (** Exact *)
 
 type ('a,'l) pre_fsafe =
-[ | `FLeaf of tag * 'l (** A leaf is a tagged literal *)
-  | `FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe (** A quantified (and guarderd) program *)
-  | `FBracket of 'a list * ('a,'l) pre_fsafe (** An unbounded existential quantification *)
-  | `FBinop of binop * ('a,'l) pre_fsafe * ('a,'l) pre_fsafe (** A binary operator *)
-]
+  PLeaf of 'l
+| PQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
+| PBracket of 'a list * ('a,'l) pre_fsafe
+| PFormula of ('a,'l) pre_fsafe formula
 
 type ('a,'l) fsafe =
-[ | `FLeaf of tag * 'l
-  | `FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) fsafe
-  | `FBinop of binop * ('a,'l) fsafe * ('a,'l) fsafe]
+  FLeaf of tag * 'l
+| FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) fsafe
+| FBinop of binop * ('a,'l) fsafe * ('a,'l) fsafe
 
 val string_of_fsafe : ('b -> string) -> ('a -> string) -> ('a,'b) fsafe -> string
 val print_fsafe : ('b -> string) -> ('a -> string) -> ('a,'b) fsafe -> unit

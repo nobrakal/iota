@@ -33,25 +33,6 @@ let replace_vars vars x =
     with Not_found -> x in
   map_lit replace x
 
-let negate_tag = function
-  | N -> E
-  | E -> N
-
-let rec negate x =
-  match x with
-  | `FLeaf (x,y) -> `FLeaf (negate_tag x, y)
-  | `FQuantif (q,x,b,f) ->
-     let q = match q with
-       | Forall -> Exists
-       | Exists -> Forall in
-     `FQuantif (q, x, b, negate f)
-  | `FBinop (b,x,y) ->
-     let b = match b with
-       | And -> Or
-       | Or -> And in
-     `FBinop (b, negate x, negate y)
-  | `FBracket _ -> failwith "TODO: Unhandled negation"
-
 (*  The program needs to typecheck ! *)
 let rec normal_form vars = function
   | ILeaf x -> Safe (ILeaf (replace_vars vars x))
@@ -156,50 +137,26 @@ let lit ~maxprof ~types x =
 let remove_tlink ~maxprof ~types f =
   fold_formula (lit ~maxprof ~types) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
-let rec simpl_parent_func = function
-  | V x -> V x
-  | Parent (_,_,Func(_,_,x)) -> simpl_parent_func x
-  | Parent (s1,s2,x) -> Parent (s1,s2,simpl_parent_func x)
-  | Func (f,i,x) -> Func (f,i,simpl_parent_func x)
-
-let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
-
-let simpl_parent_func_p = map_lit simpl_parent_func
-
-let rec simpl_parent_func_s (x : ('a,'l) pre_fsafe) =
-  match x with
-  | `FLeaf (t,x) -> `FLeaf (t, simpl_parent_func_p x)
-  | `FQuantif (q,x,g,f) -> `FQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
-  | `FBracket (xs,f) -> `FBracket (xs, simpl_parent_func_s f)
-  | `FBinop (b,x,y) -> `FBinop (b, simpl_parent_func_s x, simpl_parent_func_s y)
-
-let simpl_parent_func_g (General (xs,f)) =
-  let xs = List.map simpl_parent_func_b xs in
-  let f = map_formula simpl_parent_func_p f in
-  General (xs,f)
-
 let fsafe_of_safe ~maxprof ~types x =
   let quantif f g =
     match g with
     | (B g,x,y) -> f (g,x,y)
     | (TLink (s1,s2),x,y) ->
        let link x y = f (Link, x, y) in
-       let fold a b = `FBinop (And, a, b) in
+       let fold a b = PFormula (Binop (And, (Lit a), (Lit b))) in
        fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
   let rec aux x =
     match x with
     | IVar _ | IApply _ ->
        assert false
     | ILeaf y ->
-       fold_formula (fun x -> `FLeaf (E,x)) negate (fun a b c -> `FBinop (a,b,c)) (lit ~maxprof ~types y)
+       PFormula (map_formula (fun x -> PLeaf x) (lit ~maxprof ~types y))
     | IQuantif (q,x,g,a) ->
-       quantif (fun g -> `FQuantif (q, x, g, aux a)) g
+       quantif (fun g -> PQuantif (q, x, g, aux a)) g
     | IFormula f ->
-       fold_formula aux
-         (fun x -> negate x)
-         (fun b x y -> `FBinop (b,x,y)) f
+       PFormula (map_formula aux f)
     | IBracket (fv,body) ->
-       `FBracket (fv, aux body)
+       PBracket (fv, aux body)
   in aux x
 
 let conj xs =
@@ -220,6 +177,28 @@ let remove_tlink_general ~maxprof ~types (General (xs,f)) =
   let xs = conj (List.map aux xs) in
   List.map (fun x -> General (x, f)) xs
 
+let rec simpl_parent_func = function
+  | V x -> V x
+  | Parent (_,_,Func(_,_,x)) -> simpl_parent_func x
+  | Parent (s1,s2,x) -> Parent (s1,s2,simpl_parent_func x)
+  | Func (f,i,x) -> Func (f,i,simpl_parent_func x)
+
+let simpl_parent_func_b (b,x,y) = (b, simpl_parent_func x, simpl_parent_func y)
+
+let simpl_parent_func_p = map_lit simpl_parent_func
+
+let rec simpl_parent_func_s (x : ('a,'l) pre_fsafe) =
+  match x with
+  | PLeaf x -> PLeaf (simpl_parent_func_p x)
+  | PQuantif (q,x,g,f) -> PQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | PBracket (xs,f) -> PBracket (xs, simpl_parent_func_s f)
+  | PFormula f -> PFormula (map_formula simpl_parent_func_s f)
+
+let simpl_parent_func_g (General (xs,f)) =
+  let xs = List.map simpl_parent_func_b xs in
+  let f = map_formula simpl_parent_func_p f in
+  General (xs,f)
+
 let final_of_program ~maxprof ~types ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
     :  string Final_def.pre_final_program =
   let vars = inline_vars_in_vars tvars in
@@ -231,9 +210,9 @@ let final_of_program ~maxprof ~types ({tvars;tsafe;tensure;tmaintain} : string T
         @@ normal_form vars
         @@ inj_intermediate x) tsafe in
   let fensure =
-    List.map simpl_parent_func_g
-      (bind tensure (fun x -> remove_tlink_general ~maxprof ~types x)) in
+    List.map simpl_parent_func_g @@
+    bind tensure (fun x -> remove_tlink_general ~maxprof ~types x) in
   let fmaintain =
-    List.map simpl_parent_func_g
-      (bind tmaintain (fun x -> remove_tlink_general ~maxprof ~types x)) in
+    List.map simpl_parent_func_g @@
+    bind tmaintain (fun x -> remove_tlink_general ~maxprof ~types x) in
   {fsafe; fensure; fmaintain}

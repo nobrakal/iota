@@ -62,9 +62,9 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
          | _ -> x in
     let rec aux x = (* return (was_negated, guard) option *)
       match x with
-      | `FBinop (b,x,y) -> binop b (aux x) (aux y)
-      | `FQuantif _ -> None (* TODO verify *)
-      | `FLeaf (i,l) ->
+      | FBinop (b,x,y) -> binop b (aux x) (aux y)
+      | FQuantif _ -> None (* TODO verify *)
+      | FLeaf (i,l) ->
          match i with
          | N -> None
          | E -> lit l
@@ -82,23 +82,41 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
     in aux xs
 
   let newformula (body : (t, (t, binpred) lit) fsafe) xs =
-    List.fold_left (fun acc (e,y) -> `FQuantif (Exists,e,y,acc)) body xs
+    List.fold_left (fun acc (e,y) -> FQuantif (Exists,e,y,acc)) body xs
 
-  exception E of t list
+  exception Err of t list
+
+  let negate_tag = function
+    | N -> E
+    | E -> N
+
+  let rec negate x =
+    match x with
+    | FLeaf (x,y) -> FLeaf (negate_tag x, y)
+    | FQuantif (q,x,b,f) ->
+       let q = match q with
+         | Forall -> Exists
+         | Exists -> Forall in
+       FQuantif (q, x, b, negate f)
+    | FBinop (b,x,y) ->
+       let b = match b with
+         | And -> Or
+         | Or -> And in
+       FBinop (b, negate x, negate y)
 
   let rec run_infer x =
     match x with
-    | `FLeaf (x,y) -> `FLeaf (x,y)
-    | `FQuantif (q,x,g,f) -> `FQuantif (q,x,g,run_infer f)
-    | `FBinop (b,x,y) -> `FBinop (b,run_infer x,run_infer y)
-    | `FBracket (fv,f) ->
+    | PLeaf y -> FLeaf (E,y)
+    | PQuantif (q,x,g,f) -> FQuantif (q,x,g,run_infer f)
+    | PFormula f -> fold_formula run_infer negate (fun b x y -> FBinop (b,x,y)) f
+    | PBracket (fv,f) ->
        let f = run_infer f in
        let perm = permutation fv in
        let opt =
          let aux x = Option.map (newformula f) (try_permut f x) in
          fold_opt aux perm in
        match opt with
-       | None -> raise (E fv)
+       | None -> raise (Err fv)
        | Some x -> x
 
   let run ({fsafe;fensure;fmaintain} : t pre_final_program) : (t final_program, err) result =
@@ -108,5 +126,5 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
       let fmaintain = fmaintain in
       Ok {fsafe;fensure;fmaintain}
     with
-      E fv -> Error (Err fv)
+      Err fv -> Error (Err fv)
 end

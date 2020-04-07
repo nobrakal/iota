@@ -38,10 +38,10 @@ module Make(Manip : Manip) = struct
 
   let verify_guards x =
     let rec aux = function
-    | `FLeaf _ -> true
-    | `FQuantif (_,x,(_,a,b),phi) ->
+    | FLeaf _ -> true
+    | FQuantif (_,x,(_,a,b),phi) ->
        (a <> b) && (x = extract_var a || x = extract_var b) && aux phi
-    | `FBinop (_,x,y) -> aux x && aux y
+    | FBinop (_,x,y) -> aux x && aux y
     in aux x
 
   let extract_xvar_candidates_of x xs =
