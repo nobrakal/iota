@@ -11,6 +11,26 @@ type ('a,'l) intermediary =
   | IQuantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) intermediary
   | IBracket of 'a list *  ('a,'l) intermediary
 
+let _string_of_intermediary x =
+  let p x = x in
+  let s x = string_of_lit p string_of_rbinpred x in
+  let open Utils in
+  let string_of_list f xs =
+    String.concat "," (List.map f xs) in
+  let rec aux = function
+    | ILeaf x -> s x
+    | IVar x -> x
+    | IApply (x,y) ->
+       paren (aux x) ^ paren (aux y)
+    | IQuantif (Forall,x,y,z) ->
+       "forall " ^ x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
+    | IQuantif (Exists,x,y,z) ->
+       "exists " ^ x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
+    | IFormula f -> string_of_formula aux f
+    | IBracket (xs,z) ->
+       "bracket [" ^ string_of_list p xs ^ "] " ^ paren (aux z)
+  in aux x
+
 type ('a,'l) nf =
   | Safe of ('a,'l) intermediary
   | Closure of 'a * 'a list * ('a,'l) intermediary
@@ -70,11 +90,13 @@ let rec inj_intermediate x =
 let inline_vars_in_vars vars =
   let aux vars (RDef (name,args,body)) =
     let args' = List.map (fun x -> x,Safe (IVar x)) args in
+    let args' = args'@vars in
     let body =
       match body with
-      | F body -> inj_intermediate body
-      | Bracket (fv,body) -> IBracket (fv,inj_intermediate body) in
-    let body = normal_form (args'@vars) body in
+      | F body -> normal_form (args'@vars) (inj_intermediate body)
+      | Bracket (fv,body) ->
+         normal_form (List.fold_right List.remove_assoc fv (args'@vars)) @@
+         IBracket (fv, inj_intermediate body) in
     let closure =
       match args with
       | [] -> body

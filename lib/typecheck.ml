@@ -266,7 +266,9 @@ module Make (Manip : Manip) = struct
       try F body,type_of_def ~predicates ~types env args body
       with
       | Te (UnboundVar _)  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
-         let fvs = Manip.(to_list (fv_of_def e)) in
+         let fvs =
+           List.filter (fun x -> not (M.mem x env)) @@
+           Manip.(to_list (fv_of_def e)) in
          let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
          let body' = Bracket (fvs,body) in
          body',type_of_def ~predicates ~types nenv args body
