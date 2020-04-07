@@ -1,0 +1,5 @@
+let f x = Eq(x,y) && Eq(y,z) && E(z)
+
+in
+
+f x
