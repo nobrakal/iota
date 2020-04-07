@@ -142,7 +142,7 @@ Now, we can wire up all these definitions using a standard let-syntax. Let-defin
 let e x = E(x)
 let f h x y = (h x) && (e y)
 \end{minted}
-There is a few things to note
+There is a few things to note:
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
 \item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsec:guardinfer}).
@@ -152,7 +152,7 @@ There is a few things to note
 \subsection{General parts}
 A program is optionally followed by two lists:
 \begin{enumerate}
-\item A list of formulas that me be \emph{ensured}.
+\item A list of formulas that must be \emph{ensured}.
 \item A list of formulas that must be \emph{maintained}.
 \end{enumerate}
 
@@ -204,9 +204,6 @@ All the definitions of \Iota are \emph{pure}, ie. without any effects, so one ca
 \label{para:tlink}
 The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
 
-\paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done.
-
 \paragraph{Optimization}
 The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
 \begin{minted}{ocaml}
@@ -228,6 +225,9 @@ which will be compiled to:
 \begin{minted}{ocaml}
 let f x = exists z Eq(x,z) && Link(x,z)
 \end{minted}
+
+\paragraph{Normal form of formulas}
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done here. Note that it was not possible to do it before, since we need to first infer guards to be able to negate them properly.
 
 \subsection{Verification}
 The resulting structure must satisfies some properties.
