@@ -3,11 +3,15 @@
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
 \usepackage{hyperref}
-\usepackage{verbatim}
+
+\newcommand\Iota{\textsc{Iota}}
+\newcommand\Menhir{\textsc{Menhir}}
+\newcommand\Odoc{\textsc{Odoc}}
+\newcommand\Ocaml{\textsc{OCaml}}
+\newcommand\Dune{\textsc{Dune}}
 
 \usepackage{minted}
 \newcommand{\ocaml}{\mintinline{ocaml}}
-\newcommand{\Iota}{\texttt{Iota }}
 
 \usepackage{syntax}
 
@@ -22,10 +26,10 @@
 \tableofcontents
 
 \section{Introduction}
-\Iota is a programming language targeting the logic developed in Husson's thesis \cite{husson}. More specifically, it targets a ``safe'' subset of Husson's logic (section 5). It emphasis a strong syntax and a type system, allowing to build only correct formulas.
+\Iota{} is a programming language targeting the logic developed in Husson's thesis \cite{husson}. More specifically, it targets a ``safe'' subset of Husson's logic (section 5). It emphasis a strong syntax and a type system, allowing to build only correct formulas.
 
 \section{Semantics of the configuration file}
-A \Iota program needs to be configured. For this purpose, users need to provide a configuration file separated in three parts:
+A \Iota{} program needs to be configured. For this purpose, users need to provide a configuration file separated in three parts:
 \begin{enumerate}
 \item The definition of constants.
 \item The definition of types of objects.
@@ -33,8 +37,8 @@ A \Iota program needs to be configured. For this purpose, users need to provide 
 \end{enumerate}
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
-\subsection{The maxporf parameter}
-All trees have \emph{bound} size, thus one must specify the maximum size of a tree. This is particularly used when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
+\subsection{The maxprof parameter}
+All trees have \emph{bound} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
 Nodes, leaves and some operations on trees are \emph{typed}. These types are all defined in the configuration file, and are grouped in two families:
@@ -45,7 +49,7 @@ Nodes, leaves and some operations on trees are \emph{typed}. These types are all
   \item A simple accessor composed by a name and a type.
   \item Multiple accessors, composed by a name, a number and a type. The syntax \ocaml{10 f to site} will allow the use, on a variable \ocaml{x}, of \ocaml{x.f:0}, \ocaml{x.f:1}, to \ocaml{x.f:9}. This is semantically equivalent to define 10 different accessors.
   \end{itemize}
-  They both indicates the type of children and how to access it.
+  They both indicate the type of children and how to access it.
 \end{itemize}
 
 \subsection{Predicates}
@@ -78,13 +82,12 @@ This file declares three types:
 \item A node \ocaml{bigmol} with five possible children of type \ocaml{mol}.
 \end{itemize}
 
-\section{Semantics of a \Iota file}
-Here is given semantics to the syntax fully described in Section \ref{subsec:syntaxprog}.
-As described in Husson's thesis, a program is a file composed of four parts:
+\section{Semantics of a \Iota{} file}
+Here is given semantics to the syntax fully described in Section \ref{subsec:syntaxprog}. A \Iota{} program is a file composed of four parts (the last three are exactly from Husson's thesis) :
 
 \begin{enumerate}
-\item A list of let-definitions
-\item A list of formulas (which may use the above definitions)
+\item A list of let-definitions.
+\item A list of formulas (which may use the above definitions).
 \item A list of formulas (which may use the above definitions) that must be ensured.
 \item A list of formulas (which may use the above definitions) that must be maintained.
 \end{enumerate}
@@ -92,7 +95,7 @@ As described in Husson's thesis, a program is a file composed of four parts:
 \subsection{Propositional formulas}
 
 \paragraph{Literals}
-Formulas are about literals. A \Iota literal is either:
+Formulas are about literals. A \Iota{} literal is either:
 \begin{itemize}
 \item A name.
 \item A child of a literal.
@@ -101,7 +104,7 @@ Formulas are about literals. A \Iota literal is either:
 
 \paragraph{Predicates}
 \label{para:predicates}
-Predicates can be used to extract information about literals. Some predicates are bundled into the \Iota syntax itself:
+Predicates can be used to extract information about literals. Some predicates are bundled into the \Iota{} syntax itself:
 \begin{itemize}
 \item \ocaml{Eq} is a binary predicate expressing the fact that two literals are equals. It can be applied to literals of any types.
 \item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types.
@@ -115,10 +118,10 @@ The user can specify other predicates using the configuration file (see Section 
 Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+}. \ocaml{Eq}, \ocaml{Link} and \ocaml{Has} are dynamic.
 
 \paragraph{Formulas}
-Then you can build propositional formulas over these (fully applied) predicates using usual combinators \ocaml{not}, \ocaml{&&} and \ocaml{||}.
+Then you can build propositional formulas over these (fully applied) predicates using usual combiners \ocaml{not}, \ocaml{&&} and \ocaml{||}.
 
 \paragraph{Examples}
-Here is some examples using the previous configuration:
+Here are some examples using the previous configuration:
 \begin{minted}[frame=lines]{ocaml}
 Active(x);
 Active(x) && not (Active (x.m));
@@ -134,7 +137,7 @@ Then, one can construct first-order formulas using the two following structures:
 Notice that each quantifies variable is \emph{guarded}.
 
 \paragraph{Guard}
-A guard is a binary predicate involving exactly its two arguments. In \Iota, a guard is either \ocaml{Eq}, \ocaml{Link} or \ocaml{TLink}.
+A guard is a binary predicate involving exactly its two arguments. In \Iota{}, a guard is either \ocaml{Eq}, \ocaml{Link} or \ocaml{TLink}.
 
 \subsection{Writing programs}
 Now, we can wire up all these definitions using a standard let-syntax. Let-definitions are of the following form:
@@ -146,7 +149,7 @@ There is a few things to note:
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
 \item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsec:guardinfer}).
-\item The language is \emph{high-order}, meaning that one definition can take an other definition as an argument.
+\item The language is \emph{high-order}, meaning that one definition can take another definition as an argument.
 \end{itemize}
 
 \subsection{General parts}
@@ -156,7 +159,7 @@ A program is optionally followed by two lists:
 \item A list of formulas that must be \emph{maintained}.
 \end{enumerate}
 
-This lists are composed of formulas are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
+These lists are composed of formulas are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
 
 \subsection{Examples}
 \begin{minted}[frame=lines]{ocaml}
@@ -184,7 +187,7 @@ The compilation is divided into 5 steps:
 \end{enumerate}
 
 \subsection{Parsing}
-The described syntax is parsed using the great Menhir\cite{menhir}.
+The described syntax is parsed using the great \Menhir{}\cite{menhir}.
 
 \subsection{Typechecking}
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
@@ -193,7 +196,7 @@ Programs are typechecked (using algorithm W) to ensure the validity of the file.
 The compilation itself is divided into sub-steps.
 
 \paragraph{Inlining}
-All the definitions of \Iota are \emph{pure}, ie. without any effects, so one can always replace a call to a function by its body with proper substitution. This is the first thing the compiler do, since it allows to totally remove let-definitions. There is two sides effects:
+All the definitions of \Iota{} are \emph{pure}, ie. without any effects, so one can always replace a call to a function by its body with proper substitution. This is the first thing the compiler do, since it allows to totally remove let-definitions. There are two sides effects:
 
 \begin{itemize}
 \item Unused definitions are not included in the result of the compilation. They still need to typecheck.
@@ -202,7 +205,7 @@ All the definitions of \Iota are \emph{pure}, ie. without any effects, so one ca
 
 \paragraph{Compilation of TLink}
 \label{para:tlink}
-The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
+The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it to a big disjunction of cases. Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system) possibilities.
 
 \paragraph{Optimization}
 The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
@@ -213,11 +216,11 @@ by
 \begin{minted}{ocaml}
 x
 \end{minted}
-Note that this optimization is legal in the sense that, since the program typecheck, we know that \ocaml{x.f} is a valid object.
+Note that this optimization is legal in the sense that, since the program typechecks, we know that \ocaml{x.f} is a valid object.
 
 \subsection{Guard inference}
 \label{subsec:guardinfer}
-When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some very simple heuristics are used, and one can write a definition such as:
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some heuristics are used and one can write a definition such as:
 \begin{minted}{ocaml}
 let f x = Eq(x,z) && Link(x,z)
 \end{minted}
@@ -231,14 +234,14 @@ Any formula can be put in a \emph{normal form}, where negation is only present o
 
 \subsection{Verification}
 \label{subsec:verification}
-The resulting structure must satisfies some properties. We must ensure that every guard is indeed a well formed guard, and that the two parts ``ensure'' and ``maintain'' are well formed. This pass only checks if these properties are respected.
+The resulting structure must satisfy some properties. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed. This pass only checks if these properties are respected.
 
 \section{About the compiler}
 \subsection{Compiling}
-The compiler is written using \verb|OCaml|. It was designed to be built with \verb|dune|. It is itself separated into two components:
+The compiler is written using \Ocaml{}\cite{ocaml}. It was designed to be built with \Dune{}\cite{dune}. It is itself separated into two components:
 
-\begin{itemize}
-\item A library, located in \verb|lib/| were all the work is made. Its entrypoint is \verb|lib/main.ml|. It is fully documented using odoc\cite{odoc}. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
+\begin{enumerate}
+\item A library, located in \verb|lib/| were all the work is made. Its entry-point is \verb|lib/main.ml|. It is fully documented using \Odoc{}\cite{odoc}. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
 \begin{minted}{shell}
 dune build @doc
 \end{minted}
@@ -246,8 +249,8 @@ dune build @doc
 \begin{minted}{shell}
 dune build bin/main.exe
 \end{minted}
-  The produced executable takes as argument the configuration file and the file itself. It outputs on stdout the result of the compilation or prints an error.
-\end{itemize}
+  The produced executable takes as argument the configuration file and the file itself. It outputs the result of the compilation or prints an error.
+\end{enumerate}
 
 \subsection{Testing}
 Some efforts were made to be able to test the compiler. The test-suite is located in \verb|test/|. It can be ran using:
@@ -288,7 +291,7 @@ Comments à-la-OCaml can be used everywhere.
 \end{grammar}
 
 \subsection{Syntax of programs}
-\label{subsec:syntaxprog} Here is a BNF syntax for a \Iota program.
+\label{subsec:syntaxprog} Here is a BNF syntax for a \Iota{} program.
 \begin{grammar}
   <lident> ::= [a-z][a-zA-Z0-9]*
 

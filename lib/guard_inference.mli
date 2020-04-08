@@ -1,7 +1,7 @@
 open Program
 open Final_def
 
-(** This module tries to infer missing guards. *)
+(** This module tries to infer missing guards and moves negation only on leaves. *)
 
 module type Guard_inference = sig
   type t
