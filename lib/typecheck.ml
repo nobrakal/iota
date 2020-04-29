@@ -27,7 +27,7 @@ let rec string_of_monoty = function
   | Vt x -> "'" ^ x
   | Safet -> "Safe"
   | Litt l -> "Lit " ^ l
-  | Arrow (x,y) -> "(" ^ string_of_monoty x ^ ") -> (" ^ string_of_monoty y ^ ")"
+  | Arrow (x,y) -> paren (string_of_monoty x) ^ " -> " ^ paren (string_of_monoty y)
 
 type scheme = S of string list * monoty
 
