@@ -1,4 +1,4 @@
 (executable
  (public_name iota)
  (name main)
- (libraries iota))
+ (libraries cmdliner iota))

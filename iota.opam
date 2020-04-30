@@ -19,8 +19,9 @@ dev-repo: "git+https://github.com/nobrakal/iota.git"
 
 depends: [
   "ocaml"    {>= "4.05"}
-  "dune"     {> "1.5"}
-  "menhir"   {> "20180528"}
+  "dune"     {>= "1.5"}
+  "menhir"   {>= "20180528"}
+  "cmdliner" {>= "1.0.0"}
   "odoc"     {with-doc  & >= "1.2.0"}
   "alcotest" {with-test & >= "0.8.0"}
   "fmt"      {with-test & >= "0.8.0"}
