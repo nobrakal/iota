@@ -13,6 +13,12 @@ val print_err : err -> unit
 
 val config : Lexing.lexbuf -> Config.config
 
+type options =
+  { verbose : bool
+  ; infer_guards : bool }
+
+val default_options : options
+
 (**
   Provided a configuration and a Lexbuf to parse, this function compiles a Iota code. It:
 + Parses it using Menhir.
@@ -23,5 +29,6 @@ val config : Lexing.lexbuf -> Config.config
 
 *)
 val main :
+  options ->
   Config.config ->
   Lexing.lexbuf -> (string Final_def.final_program, err) result

@@ -9,3 +9,6 @@ let fold_opt f xs =
     | None -> f x
     | _ -> acc in
   List.fold_left run_on_none None xs
+
+let print_warning s =
+  print_endline ("[WARNING] " ^ s)

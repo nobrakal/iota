@@ -97,7 +97,6 @@ let applys xs fv =
 
 module type Typecheck =
   sig
-
     type t
 
     type type_error =
@@ -107,6 +106,7 @@ module type Typecheck =
     val string_of_type_error : (t -> string) -> type_error -> string
 
     val typecheck_program :
+      verbose:((t -> string) option) -> infer_guards:bool ->
       predicates:('a * string * string) list ->
       types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
   end
@@ -261,27 +261,38 @@ module Make (Manip : Manip) = struct
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
     t,s
 
-  let ti_let ~predicates ~types env (Def (name,args,body) as e) =
+  let print_inf verbose name fv =
+    match verbose with
+    | None -> ()
+    | Some f ->
+       let fv = String.concat "," (List.map f fv) in
+       print_warning ("The right hand side of " ^ f name ^ " has free variables: " ^ fv)
+
+  let ti_let ~verbose ~infer_guards ~predicates ~types env (Def (name,args,body) as e) =
     let body,(t,s) =
       try F body,type_of_def ~predicates ~types env args body
       with
-      | Te (UnboundVar _)  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
+      | Te (UnboundVar _) as err  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
          let fvs =
            List.filter (fun x -> not (M.mem x env)) @@
-           Manip.(to_list (fv_of_def e)) in
-         let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
-         let body' = Bracket (fvs,body) in
-         body',type_of_def ~predicates ~types nenv args body
+             Manip.(to_list (fv_of_def e)) in
+         print_inf verbose name fvs;
+         if infer_guards
+         then
+           let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
+           let body' = Bracket (fvs,body) in
+           body',type_of_def ~predicates ~types nenv args body
+         else raise err
       | x -> raise x in
     let t' = generalize (apply_subst_env s env) t in
     let env' = M.add name t' env in
     RDef (name,args,body),s,env'
 
-  let ti_lets ~predicates ~types env xs =
+  let ti_lets ~verbose ~infer_guards ~predicates ~types env xs =
     let ds,s,env =
       List.fold_left
         (fun (ds,s2,env) x ->
-          let d,s1,env = ti_let ~predicates ~types env x
+          let d,s1,env = ti_let ~verbose ~infer_guards ~predicates ~types env x
           in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
     in
     List.rev ds,s,env
@@ -297,10 +308,10 @@ module Make (Manip : Manip) = struct
       then raise (Te (WrongType (t,Safet))) in
     List.iter aux xs
 
-  let typecheck_program ~predicates ~types {vars; safe; ensure; maintain} =
+  let typecheck_program ~verbose ~infer_guards ~predicates ~types {vars; safe; ensure; maintain} =
     let env = M.empty in
     try
-      let tvars,s,env = ti_lets ~predicates ~types env vars in
+      let tvars,s,env = ti_lets ~verbose ~infer_guards ~predicates ~types env vars in
       let env = apply_subst_env s env in
       verify_safe ~predicates ~types env safe;
       let tsafe = safe in

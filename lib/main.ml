@@ -26,10 +26,17 @@ let print_err x =
        "GuardInference: " ^ Guard_inference.string_of_err (fun x -> x) e
   in Printf.eprintf "%s\n" str
 
+type options =
+  { verbose : bool
+  ; infer_guards : bool }
+
+let default_options =
+  {verbose=true; infer_guards=true}
+
 let config buf =
   Parser.config Lexer.token buf
 
-let main config lexbuf =
+let main options config lexbuf =
   match try Some (Parser.program Lexer.token lexbuf) with Parser.Error -> None with
   | None -> Error Menhir
   | Some ast ->
@@ -40,7 +47,9 @@ let main config lexbuf =
      | Error e -> Error (Parse e)
      | Ok ast ->
         (* Typecheck with algorithm W *)
-        match Typecheck.typecheck_program ~predicates:config.predicates ~types:config.types ast with
+        let verbose = if options.verbose then Some (fun x -> x) else None in
+        match Typecheck.typecheck_program ~verbose ~infer_guards:options.infer_guards
+                ~predicates:config.predicates ~types:config.types ast with
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)

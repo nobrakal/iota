@@ -7,3 +7,5 @@ val paren : string -> string
 val space : string -> string
 
 val fold_opt : ('a -> 'b option) -> 'a list -> 'b option
+
+val print_warning : string -> unit

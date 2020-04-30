@@ -37,6 +37,7 @@ module type Typecheck =
     val string_of_type_error : (t -> string) -> type_error -> string
 
     val typecheck_program :
+      verbose:((t -> string) option) -> infer_guards:bool ->
       predicates:('a * string * string) list ->
       types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
   end
