@@ -1,4 +1,5 @@
 open Program
+open Utils
 
 (** This module
 - Runs algorithm W on the code
@@ -38,8 +39,8 @@ module type Typecheck =
 
     val typecheck_program :
       verbose:((t -> string) option) -> infer_guards:bool ->
-      predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
+      predicates:('a * string) StringMap.t ->
+      types:Config.accessor list StringMap.t -> t program -> (t typed_program,type_error) result
   end
 
 

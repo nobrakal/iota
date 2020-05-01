@@ -37,7 +37,7 @@ rule token = parse
   | "exists" { EXISTS }
 
   | "maxprof" { MAXPROF }
-  | "static" { STATIC }
+  | "static"  { STATIC }
   | "dynamic" { DYNAMIC }
   | "about"   { ABOUT }
 

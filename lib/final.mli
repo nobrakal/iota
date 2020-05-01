@@ -1,3 +1,5 @@
+open Utils
+
 (** This module compiles a typechecking program to a final one. It
 - Inlines all let definitions.
 - Compiles [TLink] to the corresponding list of [Link].
@@ -7,5 +9,5 @@
 (** Transform a program that typechecks into a final one *)
 val final_of_program :
   maxprof:int ->
-  types:(Config.ty_dec list) ->
+  types:Config.accessor list StringMap.t ->
   string Typecheck.typed_program -> string Final_def.pre_final_program

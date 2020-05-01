@@ -131,12 +131,12 @@ let rec iter_bind n x f =
   then x
   else iter_bind (n-1) (bind x f) f
 
-let fold_paths ~maxprof ~(types : Config.ty_dec list) fold link x y =
+let fold_paths ~maxprof ~(types : Config.accessor list Utils.StringMap.t) fold link x y =
   let link x y = link (fst x) (fst y) in
   let paths x =
     iter_bind maxprof [x]
       (fun (x,xt) ->
-        match List.assoc_opt xt types with
+        match Utils.StringMap.find_opt xt types with
         | Some xs -> List.(concat (map (extract_possible_child x) xs))
         | None -> failwith "TODO: unknown type") in
   match paths x, paths y with

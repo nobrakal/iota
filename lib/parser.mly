@@ -129,6 +129,8 @@ let mk_formula(atom) :=
 config:
 | maxprof=econfig(MAXPROF,Int) types = list(type_elem) predicates=list(predicate) EOF
  {
+   let predicates = Utils.stringmap_of_list predicates in
+   let types = Utils.stringmap_of_list types in
    {maxprof;predicates;types}
  }
 
@@ -144,5 +146,5 @@ accessor:
   | i=Int x=LowerId TO y=LowerId {Multiple (x,i,y)}
 
 predicate:
-| STATIC  x=UpperId ABOUT y=LowerId {(false,x,y)}
-| DYNAMIC x=UpperId ABOUT y=LowerId {(true,x,y)}
+| STATIC  x=UpperId ABOUT y=LowerId {(x,(false,y))}
+| DYNAMIC x=UpperId ABOUT y=LowerId {(x,(true,y))}

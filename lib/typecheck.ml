@@ -107,8 +107,8 @@ module type Typecheck =
 
     val typecheck_program :
       verbose:((t -> string) option) -> infer_guards:bool ->
-      predicates:('a * string * string) list ->
-      types:(Config.ty_dec list) -> t program -> (t typed_program,type_error) result
+      predicates:('a * string) StringMap.t ->
+      types:(Config.accessor list) StringMap.t -> t program -> (t typed_program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -161,9 +161,9 @@ module Make (Manip : Manip) = struct
     fold_opt aux xs
 
   let get_accessor_type f i types =
-    let aux (start,xs) =
+    let aux start xs =
       Option.map (fun x -> start,x) (get_accessor_type' f i xs) in
-    fold_opt aux types
+    stringmap_fold_opt aux types
 
   let exists_end_type endt xs =
     List.exists (fun x -> extract_type x = endt) xs
@@ -184,11 +184,11 @@ module Make (Manip : Manip) = struct
          | None -> failwith "todo: unbound function" end
       | Parent (startt,endt,x) ->
          let tx,sx = aux x in
-         if List.exists (fun (x,xs) -> x=startt && exists_end_type endt xs) types
-          then
+         match StringMap.find_opt startt types with
+         | Some xs when (exists_end_type endt xs) ->
             let s = unify tx (Litt endt) in
             (Litt startt),(compose_subst s sx)
-         else failwith "Undefined parent"
+         | _ -> failwith "undefined parent"
     in aux x
 
   let variables_of_lit = function
@@ -201,7 +201,7 @@ module Make (Manip : Manip) = struct
   let verif_pred ~predicates xs =
     function
     | Stat (s,_) | Dyn (_,Other (s,_)) ->
-       let _,_,ty = List.find (fun (_,n,_) -> s = n) predicates in
+       let _,ty = StringMap.find s predicates in
        unify (fst (List.hd xs)) (Litt ty)
     | _ -> Subst.empty
 
