@@ -30,7 +30,7 @@
 
 %token FORALL EXISTS
 
-%token TYPE GUARD TO
+%token TYPE GUARD TO WITH
 
 (* Config tokens *)
 %token MAXPROF STATIC DYNAMIC ABOUT
@@ -127,11 +127,12 @@ let mk_formula(atom) :=
 
 (* Configuration *)
 config:
-| maxprof=econfig(MAXPROF,Int) types = list(type_elem) predicates=list(predicate) EOF
+| maxprof=econfig(MAXPROF,Int) types = list(type_elem) predicates=list(predicate) links=list(link) EOF
  {
    let predicates = Utils.stringmap_of_list predicates in
    let types = Utils.stringmap_of_list types in
-   {maxprof;predicates;types}
+   let links = Utils.stringmap_of_list links in
+   {maxprof;predicates;types;links}
  }
 
 let econfig(keyword,value) :=
@@ -148,3 +149,6 @@ accessor:
 predicate:
 | STATIC  x=UpperId ABOUT y=LowerId {(x,(false,y))}
 | DYNAMIC x=UpperId ABOUT y=LowerId {(x,(true,y))}
+
+link:
+| LINK x=LowerId WITH xs=separated_list(COMMA,LowerId) {(x,xs)}
