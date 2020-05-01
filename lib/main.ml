@@ -48,8 +48,7 @@ let main options config lexbuf =
      | Ok ast ->
         (* Typecheck with algorithm W *)
         let verbose = if options.verbose then Some (fun x -> x) else None in
-        match Typecheck.typecheck_program ~verbose ~infer_guards:options.infer_guards
-                ~predicates:config.predicates ~types:config.types ast with
+        match Typecheck.typecheck_program ~verbose ~infer_guards:options.infer_guards ~config ast with
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)

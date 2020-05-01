@@ -1,5 +1,6 @@
 open Program
 open Utils
+open Config
 
 type ('a,'l) rich_pre_safe =
   | F of ('a,'l) pre_safe
@@ -107,8 +108,7 @@ module type Typecheck =
 
     val typecheck_program :
       verbose:((t -> string) option) -> infer_guards:bool ->
-      predicates:('a * string) StringMap.t ->
-      types:(Config.accessor list) StringMap.t -> t program -> (t typed_program,type_error) result
+      config:Config.config -> t program -> (t typed_program,type_error) result
   end
 
 module Make (Manip : Manip) = struct
@@ -205,10 +205,10 @@ module Make (Manip : Manip) = struct
        unify (fst (List.hd xs)) (Litt ty)
     | _ -> Subst.empty
 
-  let ti_lit ~predicates ~types env x =
-    let vars = List.map (ti_var ~types env) (variables_of_lit x) in
+  let ti_lit ~config env x =
+    let vars = List.map (ti_var ~types:config.types env) (variables_of_lit x) in
     let subst = List.fold_left (fun acc v -> Subst.union left_bias (snd v) acc) Subst.empty vars in
-    Subst.union left_bias (verif_pred ~predicates vars x) subst
+    Subst.union left_bias (verif_pred ~predicates:config.predicates vars x) subst
 
   let union x y =
     let x' = Subst.fold (fun x _ y -> StringSet.add x y) x StringSet.empty in
@@ -228,10 +228,10 @@ module Make (Manip : Manip) = struct
     with
       Exit -> raise (Te (WrongType (x, y)))
 
-  let ti_safe ~predicates ~types env x =
+  let ti_safe ~config env x =
     let rec aux env = function
       | Leaf x ->
-         Safet,ti_lit ~predicates ~types env x
+         Safet,ti_lit ~config env x
       | Var x ->
          let t =
            match M.find_opt x env with
@@ -246,7 +246,7 @@ module Make (Manip : Manip) = struct
          apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
       | Quantif (_,x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
-         let subst = ti_lit ~predicates ~types nenv (Dyn (false,Bin u)) in
+         let subst = ti_lit ~config nenv (Dyn (false,Bin u)) in
          let t,b = aux nenv b in
          let s = try_unify t Safet in
          Safet,union s (union subst b)
@@ -254,10 +254,10 @@ module Make (Manip : Manip) = struct
          fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> Safet, union x y) f
     in aux env x
 
-  let type_of_def ~predicates ~types env args body =
+  let type_of_def ~config env args body =
     let args = List.map (fun x -> x,fresh_ty ()) args in
     let env = List.fold_left (fun acc (x,v) -> M.add x (scheme_of_mono v) acc) env args in
-    let t,s = ti_safe ~predicates ~types env body in
+    let t,s = ti_safe ~config env body in
     let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
     t,s
 
@@ -268,9 +268,9 @@ module Make (Manip : Manip) = struct
        let fv = String.concat "," (List.map f fv) in
        print_warning ("The right hand side of " ^ f name ^ " has free variables: " ^ fv)
 
-  let ti_let ~verbose ~infer_guards ~predicates ~types env (Def (name,args,body) as e) =
+  let ti_let ~verbose ~infer_guards ~config env (Def (name,args,body) as e) =
     let body,(t,s) =
-      try F body,type_of_def ~predicates ~types env args body
+      try F body,type_of_def ~config env args body
       with
       | Te (UnboundVar _) as err  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
          let fvs =
@@ -281,39 +281,39 @@ module Make (Manip : Manip) = struct
          then
            let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
            let body' = Bracket (fvs,body) in
-           body',type_of_def ~predicates ~types nenv args body
+           body',type_of_def ~config nenv args body
          else raise err
       | x -> raise x in
     let t' = generalize (apply_subst_env s env) t in
     let env' = M.add name t' env in
     RDef (name,args,body),s,env'
 
-  let ti_lets ~verbose ~infer_guards ~predicates ~types env xs =
+  let ti_lets ~verbose ~infer_guards ~config env xs =
     let ds,s,env =
       List.fold_left
         (fun (ds,s2,env) x ->
-          let d,s1,env = ti_let ~verbose ~infer_guards ~predicates ~types env x
+          let d,s1,env = ti_let ~verbose ~infer_guards ~config env x
           in d::ds,compose_subst s1 s2, env) ([],Subst.empty,env) xs
     in
     List.rev ds,s,env
 
-  let verify_safe ~predicates ~types env xs =
+  let verify_safe ~config env xs =
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
-      let t = fst (ti_safe ~predicates ~types env x) in
+      let t = fst (ti_safe ~config env x) in
       if t <> Safet
       then raise (Te (WrongType (t,Safet))) in
     List.iter aux xs
 
-  let typecheck_program ~verbose ~infer_guards ~predicates ~types {vars; safe; ensure; maintain} =
+  let typecheck_program ~verbose ~infer_guards ~config {vars; safe; ensure; maintain} =
     let env = M.empty in
     try
-      let tvars,s,env = ti_lets ~verbose ~infer_guards ~predicates ~types env vars in
+      let tvars,s,env = ti_lets ~verbose ~infer_guards ~config env vars in
       let env = apply_subst_env s env in
-      verify_safe ~predicates ~types env safe;
+      verify_safe ~config env safe;
       let tsafe = safe in
       let tensure = ensure in
       let tmaintain = maintain in
