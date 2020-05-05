@@ -1,6 +1,7 @@
 %{ (* -*- tuareg -*- *)
    open Program
    open Config
+   open Utils
 
    let list_of_option x = Option.value ~default:[] x
 %}
@@ -30,7 +31,7 @@
 
 %token FORALL EXISTS
 
-%token TYPE GUARD TO WITH
+%token TYPE GUARD TO
 
 (* Config tokens *)
 %token MAXPROF STATIC DYNAMIC ABOUT
@@ -131,6 +132,9 @@ config:
  {
    let predicates = Utils.stringmap_of_list predicates in
    let types = Utils.stringmap_of_list types in
+   let links =
+     List.map
+       (fun (x,xs) -> x,List.fold_left (fun acc x -> StringSet.add x acc) StringSet.empty xs) links in
    let links = Utils.stringmap_of_list links in
    {maxprof;predicates;types;links}
  }
@@ -151,4 +155,4 @@ predicate:
 | DYNAMIC x=UpperId ABOUT y=LowerId {(x,(true,y))}
 
 link:
-| LINK x=LowerId WITH xs=separated_list(COMMA,LowerId) {(x,xs)}
+| LINK x=LowerId TO xs=separated_list(COMMA,LowerId) {(x,xs)}

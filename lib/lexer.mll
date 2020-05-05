@@ -40,7 +40,6 @@ rule token = parse
   | "static"  { STATIC }
   | "dynamic" { DYNAMIC }
   | "about"   { ABOUT }
-  | "with"    { WITH }
 
   | "=>"     { BIGARROW }
   | "->"     { ARROW }

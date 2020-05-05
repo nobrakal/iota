@@ -8,7 +8,7 @@ type config =
   { maxprof : int
   ; predicates : (bool * string) StringMap.t (** name -> is_dynamic,type *)
   ; types : (accessor list) StringMap.t (** name -> possible children *)
-  ; links : string list StringMap.t (** name -> possible linked *)
+  ; links : StringSet.t StringMap.t (** name -> possible linked *)
   }
 
 val static_of_config : config -> StringSet.t
