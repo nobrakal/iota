@@ -78,13 +78,13 @@ safe:
 | x=safe_apply { x }
 
 safe_apply:
-| x=LowerId y=safe_atom { Apply (Var x,y) }
+| x=term y=safe_atom { Apply (Var x,y) }
 | x=safe_apply y=safe_atom { Apply (x,y) }
 
 safe_atom:
 | x=lit { Leaf x }
 | "(" x=safe ")" { x }
-| x=LowerId { Var x }
+| x=term { Var x }
 
 let safe_formula := mk_formula(safe_formula_lit)
 

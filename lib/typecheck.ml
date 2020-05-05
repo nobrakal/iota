@@ -233,11 +233,7 @@ module Make (Manip : Manip) = struct
       | Leaf x ->
          Safet,ti_lit ~config env x
       | Var x ->
-         let t =
-           match M.find_opt x env with
-           | None -> raise (Te (UnboundVar x))
-           | Some t -> instanciate t in
-         t, Subst.empty
+          ti_var ~types:config.types env x
       | Apply (x,y) ->
          let tv = fresh_ty () in
          let t,s = aux env x in
@@ -272,7 +268,7 @@ module Make (Manip : Manip) = struct
     let body,(t,s) =
       try F body,type_of_def ~config env args body
       with
-      | Te (UnboundVar _) as err  -> (* unbound var, we try to quantify all the unbound var *) (* TODO useful ?? *)
+      | Te (UnboundVar _) as err  -> (* unbound var, we try to quantify all the unbound var *)
          let fvs =
            List.filter (fun x -> not (M.mem x env)) @@
              Manip.(to_list (fv_of_def e)) in

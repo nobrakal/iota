@@ -6,7 +6,7 @@ open Final_def
 type ('a,'l) intermediary =
   | IFormula of ('a,'l) intermediary formula
   | ILeaf of 'l
-  | IVar of 'a
+  | IVar of 'a var
   | IApply of ('a,'l) intermediary * ('a,'l) intermediary
   | IQuantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) intermediary
   | IBracket of 'a list *  ('a,'l) intermediary
@@ -19,7 +19,7 @@ let _string_of_intermediary x =
     String.concat "," (List.map f xs) in
   let rec aux = function
     | ILeaf x -> s x
-    | IVar x -> x
+    | IVar x -> string_of_var p x
     | IApply (x,y) ->
        paren (aux x) ^ paren (aux y)
     | IQuantif (Forall,x,y,z) ->
@@ -49,7 +49,7 @@ let var_of_safe = function
 
 let replace_vars vars x =
   let replace x =
-    try map_var (fun x -> var_of_safe (List.assoc x vars)) x
+    try fold_var (fun x -> var_of_safe (List.assoc x vars)) x
     with Not_found -> x in
   map_lit replace x
 
@@ -57,14 +57,16 @@ let replace_vars vars x =
 let rec normal_form vars = function
   | ILeaf x -> Safe (ILeaf (replace_vars vars x))
   | IVar x ->
-     begin try List.assoc x vars
-     with Not_found -> Safe (IVar x) end
+     begin match x with
+     | V xx ->
+        begin try List.assoc xx vars
+        with Not_found -> Safe (IVar x) end
+     | _ -> Safe (IVar x) end
   | IApply (x,y) ->
      begin match normal_form vars x with
      | Closure (arg,args,body) ->
         let y = normal_form vars y in
-        let vars = (arg,y)::vars in
-        let body = normal_form vars body in
+        let body = normal_form ((arg,y)::vars) body in
         begin match args with
         | [] -> body
         | x::xs -> join_closure x xs body end
@@ -89,7 +91,7 @@ let rec inj_intermediate x =
 
 let inline_vars_in_vars vars =
   let aux vars (RDef (name,args,body)) =
-    let args' = List.map (fun x -> x,Safe (IVar x)) args in
+    let args' = List.map (fun x -> x,Safe (IVar (V x))) args in
     let args' = args'@vars in
     let body =
       match body with
@@ -222,7 +224,7 @@ let simpl_parent_func_g (General (xs,f)) =
   General (xs,f)
 
 let final_of_program ~maxprof ~types ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
-    :  string Final_def.pre_final_program =
+    : string Final_def.pre_final_program =
   let vars = inline_vars_in_vars tvars in
   let fsafe =
     List.map (fun x ->

@@ -34,7 +34,7 @@ type 'a formula =
 type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
   | Leaf of 'l
-  | Var of 'a
+  | Var of 'a var
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
@@ -55,12 +55,14 @@ type ('a,'l) pre_program =
 type 'a parsed_program = ('a, bool * ('a, rbinpred) dynamic) pre_program
 type 'a program = ('a, ('a, rbinpred) lit) pre_program
 
-let map_var f x =
+let fold_var f x =
   let rec aux = function
-    | V x -> V (f x)
+    | V x -> f x
     | Parent (s1,s2,x) -> Parent (s1,s2,aux x)
     | Func (s,i,x) -> Func (s,i, aux x)
   in aux x
+
+let map_var f x = fold_var (fun x -> V (f x)) x
 
 let map_lit f x = match x with
   | Stat (s,v) -> Stat (s,f v)
@@ -149,7 +151,7 @@ let print_formula lit x = print_endline (string_of_formula lit x)
 let string_of_safe s p x =
   let rec aux = function
     | Leaf x -> s x
-    | Var x -> p x
+    | Var x -> string_of_var p x
     | Apply (x,y) ->
        paren (aux x) ^ paren (aux y)
     | Quantif (Forall,x,y,z) ->
@@ -249,14 +251,14 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let rec variables_of_safe = function
     | Leaf f -> variables_of_lit f
-    | Var x -> S.singleton x
+    | Var x -> S.singleton (extract_var x)
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Quantif (_,_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
     | Formula f -> fold_fomula_union variables_of_safe f
 
   let rec fv_of_safe = function
     | Leaf f -> variables_of_lit f
-    | Var x -> S.singleton x
+    | Var x -> S.singleton (extract_var x)
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
     | Quantif (_,u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
     | Formula f -> fold_fomula_union fv_of_safe  f

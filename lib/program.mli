@@ -21,6 +21,7 @@ type 'a var =
   | Func of string * int option * 'a var (** A function application (the function itself is maybe from a multiple definition) *)
 
 val string_of_var : ('a -> string) -> 'a var -> string
+val fold_var : ('a -> 'b var) -> 'a var -> 'b var
 val map_var : ('a -> 'b) -> 'a var -> 'b var
 val extract_var : 'a var -> 'a
 
@@ -63,7 +64,7 @@ type quantif = Forall | Exists
 type ('a,'l) pre_safe =
   | Formula of ('a,'l) pre_safe formula
   | Leaf of 'l
-  | Var of 'a
+  | Var of 'a var
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
 
