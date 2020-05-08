@@ -4,7 +4,13 @@
 - Simplifies [Link(x.f)] into [x].
  *)
 
+type err =
+  | UnknownType of string
+  | EmptyTLink
+
+val string_of_err : err -> string
+
 (** Transform a program that typechecks into a final one *)
 val final_of_program :
   config:Config.config ->
-  string Typecheck.typed_program -> string Final_def.pre_final_program
+  string Typecheck.typed_program -> (string Final_def.pre_final_program,err) result

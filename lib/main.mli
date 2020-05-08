@@ -9,6 +9,8 @@ type err =
   | Parse of Program.parse_error
   | Structure of Structure.invalidity
   | GuardInference of Guard_inference.err
+  | Simplification of Final.err
+
 val print_err : err -> unit
 
 val config : Lexing.lexbuf -> Config.config

@@ -4,6 +4,16 @@ open Final_def
 open Utils
 open Config
 
+type err =
+  | UnknownType of string
+  | EmptyTLink
+
+let string_of_err = function
+  | UnknownType s -> "UnknownType " ^ s
+  | EmptyTLink -> "A TLink operator is empty because too constrained"
+
+exception E of err
+
 (* intermediate language allowing bracket *)
 type ('a,'l) intermediary =
   | IFormula of ('a,'l) intermediary formula
@@ -133,24 +143,37 @@ let bind x f = List.(concat (map f x))
 let rec iter_bind n x f =
   if n = 0
   then x
-  else iter_bind (n-1) (bind x f) f
+  else x @ iter_bind (n-1) (bind x f) f
+
+let mem_opt x = function
+  | None -> true
+  | Some xs -> StringSet.mem x xs
+
+let is_linkable links x y =
+  mem_opt y (StringMap.find_opt x  links) && mem_opt x (StringMap.find_opt y links)
 
 let fold_paths ~config fold link x y =
-  let link x y = link (fst x) (fst y) in
+  let link' (x,xt) (y,yt) =
+    if is_linkable config.links xt yt
+    then Some (link x y)
+    else None in
   let paths x =
     iter_bind config.maxprof [x]
       (fun (x,xt) ->
         match Utils.StringMap.find_opt xt config.types with
         | Some xs -> List.(concat (map (extract_possible_child x) xs))
-        | None -> failwith "TODO: unknown type") in
-  match paths x, paths y with
-  | [],_ | _,[] -> assert false
-  | x::xs,y::ys ->
-     let aux x acc y = fold acc (link x y) in
-     List.fold_left
-       (fun acc x ->
-         List.fold_left (aux x) acc (y::ys))
-       (List.fold_left (aux x) (link x y) ys) xs
+        | None -> raise (E (UnknownType xt))) in
+  let xs = paths x in
+  let ys = paths y in
+  let aux x acc y =
+    match acc,link' x y with
+    | None,None -> None
+    | Some x,None| None,Some x -> Some x
+    | Some x,Some acc -> Some (fold acc x) in
+  let res = List.fold_left (fun acc x -> List.fold_left (aux x) acc ys) None xs in
+  match res with
+  | Some x -> x
+  | None -> raise (E EmptyTLink)
 
 let lit ~config x =
   match lit' x with
@@ -226,19 +249,22 @@ let simpl_parent_func_g (General (xs,f)) =
   General (xs,f)
 
 let final_of_program ~config ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
-    : string Final_def.pre_final_program =
+    : (string Final_def.pre_final_program,err) result =
   let vars = inline_vars_in_vars tvars in
-  let fsafe =
-    List.map (fun x ->
-        simpl_parent_func_s
-        @@ fsafe_of_safe ~config
-        @@ safe_of_nf
-        @@ normal_form vars
-        @@ inj_intermediate x) tsafe in
-  let fensure =
-    List.map simpl_parent_func_g @@
-    bind tensure (fun x -> remove_tlink_general ~config x) in
-  let fmaintain =
-    List.map simpl_parent_func_g @@
-    bind tmaintain (fun x -> remove_tlink_general ~config x) in
-  {fsafe; fensure; fmaintain}
+  try
+    let fsafe =
+      List.map (fun x ->
+          simpl_parent_func_s
+          @@ fsafe_of_safe ~config
+          @@ safe_of_nf
+          @@ normal_form vars
+          @@ inj_intermediate x) tsafe in
+    let fensure =
+      List.map simpl_parent_func_g @@
+        bind tensure (fun x -> remove_tlink_general ~config x) in
+    let fmaintain =
+      List.map simpl_parent_func_g @@
+        bind tmaintain (fun x -> remove_tlink_general ~config x) in
+    Ok {fsafe; fensure; fmaintain}
+  with
+  | E e -> Error e

@@ -11,6 +11,7 @@ type err =
   | Parse of Program.parse_error
   | Structure of Structure.invalidity
   | GuardInference of Guard_inference.err
+  | Simplification of Final.err
 
 let print_err x =
   let str =
@@ -24,6 +25,8 @@ let print_err x =
        "Structure: " ^ Structure.string_of_invalidity e
     | GuardInference e ->
        "GuardInference: " ^ Guard_inference.string_of_err (fun x -> x) e
+    | Simplification e ->
+       "Simplification: " ^ Final.string_of_err e
   in Printf.eprintf "%s\n" str
 
 type options =
@@ -52,12 +55,14 @@ let main options config lexbuf =
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)
-           let ast = Final.final_of_program ~config ast in
-           (* Try to infer guards *)
-           match Guard_inference.run ast with
-           | Error e -> Error (GuardInference e)
+           match Final.final_of_program ~config ast with
+           | Error e -> Error (Simplification e)
            | Ok ast ->
-              (* Verify that the structure is valid *)
-              match Structure.validate_program ast with
-              | Some e -> Error (Structure e)
-              | None -> Ok ast
+              (* Try to infer guards *)
+              match Guard_inference.run ast with
+              | Error e -> Error (GuardInference e)
+              | Ok ast ->
+                 (* Verify that the structure is valid *)
+                 match Structure.validate_program ast with
+                 | Some e -> Error (Structure e)
+                 | None -> Ok ast

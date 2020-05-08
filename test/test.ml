@@ -3,13 +3,14 @@ let prefix = "tests/"
 let good = "good"
 let bad = "bad"
 
-type ttt = Parsing | Typechecking | Structure | Guard_Inference
+type ttt = Parsing | Typechecking | Structure | Guard_Inference | Simplification
 
 let string_of_ttt = function
   | Parsing -> "parsing"
   | Typechecking -> "typechecking"
   | Structure -> "structure"
   | Guard_Inference -> "guard_inference"
+  | Simplification -> "simplification"
 
 let config = Iota.Main.config (Lexing.from_channel (open_in (prefix ^ "config.hiota")))
 
@@ -31,6 +32,7 @@ let compile_bad ttt x =
   | Error (Iota.Main.Type _), Typechecking
     | Error (Iota.Main.Parse _ | Iota.Main.Menhir), Parsing
     | Error (Iota.Main.Structure _), Structure
+    | Error (Iota.Main.Simplification _), Simplification
     | Error (Iota.Main.GuardInference _), Guard_Inference -> true
   | _ -> false
 
