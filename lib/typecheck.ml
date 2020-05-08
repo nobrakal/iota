@@ -17,63 +17,99 @@ type 'a typed_program =
 
 module Subst = Map.Make(String)
 
+type ground =
+  | Vt of string (** Type variable *)
+  | Litt of string  (** A known litteral *)
+
+module GroundSet = Set.Make(struct type t = ground let compare=compare end)
+
 (** Type of monomorphic types *)
 type monoty =
-  | Vt of string (** Type variable *)
+  | G of ground
   | Safet (** A safe expression *)
-  | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
 
 let rec string_of_monoty = function
-  | Vt x -> "'" ^ x
+  | G (Vt x) -> "'" ^ x
   | Safet -> "Safe"
-  | Litt l -> "Lit " ^ l
+  | G (Litt l) -> "Lit " ^ l
   | Arrow (x,y) -> paren (string_of_monoty x) ^ " -> " ^ paren (string_of_monoty y)
 
-type scheme = S of string list * monoty
+type scheme = S of string list * GroundSet.t StringMap.t * monoty
 
 let fresh_ty =
   let internal_counter = ref 0 in
   fun () ->
   internal_counter := !internal_counter + 1;
-  Vt ("_" ^ string_of_int ! internal_counter)
+  G (Vt ("_" ^ string_of_int ! internal_counter))
 
 let rec fv_of_ty = function
-  | Litt _ | Safet -> StringSet.empty
-  | Vt x -> StringSet.singleton x
+  | G (Litt _) | Safet -> StringSet.empty
+  | G (Vt x) -> StringSet.singleton x
   | Arrow (x,y) -> StringSet.union (fv_of_ty x) (fv_of_ty y)
 
-let fv_of_scheme (S (xs,x)) =
+let fv_of_scheme (S (xs,_,x)) =
   StringSet.diff (fv_of_ty x) (StringSet.of_list xs)
 
-let scheme_of_mono x = S ([],x)
+let scheme_of_mono x = S ([],StringMap.empty,x)
 
 let apply_subst_ty subst =
   let rec aux t =
     match t with
-    | Litt _ | Safet -> t
+    | G (Litt _) | Safet -> t
     | Arrow (x,y) -> Arrow (aux x, aux y)
-    | Vt x ->
+    | G (Vt x) ->
        match Subst.find_opt x subst with
        | None -> t
        | Some x -> x in
   aux
 
-let apply_subst_scheme subst (S (xs,x)) =
+let apply_subst_ground subst x =
+  match apply_subst_ty subst (G x) with
+  | G x -> x
+  | _ -> assert false
+
+let verify_links ~links_err links x y =
+  match StringMap.find_opt x links with
+  | None -> ()
+  | Some xs ->
+     if StringSet.mem y xs
+     then ()
+     else links_err x y
+
+let update_links_map ~links_err links subst m =
+  let upd vx lx = function
+    | None -> assert false (* m is symmetric *)
+    | Some xs -> Some (GroundSet.(add (Litt lx) (remove (Vt vx) xs))) in
+  let aux_gs vx lx g m =
+    match g with
+    | Litt y -> verify_links ~links_err links lx y; m
+    | Vt y -> StringMap.update y (upd vx lx) m in
+  let aux x gs m =
+    let gs = GroundSet.map (apply_subst_ground subst) gs in
+    match apply_subst_ground subst (Vt x) with
+    | Litt lx ->
+       GroundSet.fold (aux_gs x lx) gs m
+    | Vt y -> StringMap.add y gs m in
+  StringMap.fold aux m StringMap.empty
+
+let apply_subst_scheme ~links_err clinks subst (S (xs,m,x)) =
   let subst = Subst.filter (fun x _ -> List.mem x xs) subst in
-  S (xs, apply_subst_ty subst x)
+  let nm = update_links_map ~links_err clinks subst m in
+  S (xs,nm, apply_subst_ty subst x)
 
 let left_bias _ x _ = Some x
 
 let compose_subst s1 s2 =
   Subst.union left_bias (Subst.map (apply_subst_ty s1) s2) s1
 
-let instanciate (S (xs,x)) =
+let instanciate ~links_err clinks (S (xs,m,x)) =
   let subst = List.fold_left (fun s k -> Subst.add k (fresh_ty ()) s) Subst.empty xs in
-  apply_subst_ty subst x
+  let nm = update_links_map ~links_err clinks subst m in
+  apply_subst_ty subst x,nm
 
 let bindvar u t =
-  if (Vt u) = t
+  if (G (Vt u)) = t
   then Subst.empty
   else
     let fv = fv_of_ty t in
@@ -88,8 +124,8 @@ let unify x y =
        let s2 = aux (apply_subst_ty s1 x2, apply_subst_ty s1 y2) in
        compose_subst s1 s2
     | Safet, Safet -> Subst.empty
-    | Litt x, Litt y when x = y -> Subst.empty
-    | Vt x,y | y, Vt x -> bindvar x y
+    | G (Litt x), G (Litt y) when x = y -> Subst.empty
+    | G (Vt x),y | y, G (Vt x) -> bindvar x y
     | _ -> raise Exit
   in aux (x,y)
 
@@ -103,6 +139,7 @@ module type Typecheck =
     type type_error =
       | UnboundVar of t
       | WrongType of monoty * monoty (* actual, expected *)
+      | Constraint of string * string
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
@@ -119,6 +156,7 @@ module Make (Manip : Manip) = struct
   type type_error =
     | UnboundVar of Manip.t
     | WrongType of monoty * monoty (* actual, expected *)
+    | Constraint of string * string
 
   exception Te of type_error
 
@@ -129,18 +167,24 @@ module Make (Manip : Manip) = struct
        "Type error:\n"
        ^ "Expected: " ^ string_of_monoty x ^ "\n"
        ^ "Actual:   " ^ string_of_monoty y
+    | Constraint (x,y) ->
+       "Type error:\n"
+       ^ "Trying to link " ^ x ^ " with " ^ y
 
   let unify x y =
     try unify x y with
     | Exit -> raise (Te (WrongType (x,y)))
 
-  let fv_of_env x = M.fold (fun _ x s -> StringSet.union s (fv_of_scheme x)) x StringSet.empty
-  let apply_subst_env s x = M.map (apply_subst_scheme s) x
+  let links_err x y = raise (Te (Constraint (x,y)))
 
-  let generalize env t =
+  let fv_of_env x = M.fold (fun _ x s -> StringSet.union s (fv_of_scheme x)) x StringSet.empty
+  let apply_subst_env links s x = M.map (apply_subst_scheme ~links_err links s) x
+
+  let generalize env m t =
     let vars = StringSet.diff (fv_of_ty t) (fv_of_env env) in
     let vars = StringSet.fold (fun x xs -> x::xs) vars [] in
-    S (vars,t)
+    (* m \incl vars *)
+    S (vars,m,t)
 
   let extract_type =
     let open Config in
@@ -168,26 +212,28 @@ module Make (Manip : Manip) = struct
   let exists_end_type endt xs =
     List.exists (fun x -> extract_type x = endt) xs
 
-  let ti_var ~types env x =
+  let ti_var ~config env x =
     let rec aux x =
       match x with
       | Program.V x ->
          begin match M.find_opt x env with
          | None -> raise (Te (UnboundVar x))
-         | Some t -> instanciate t,Subst.empty end
+         | Some t ->
+            let t,l = instanciate ~links_err config.links t in
+            t,l,Subst.empty end
       | Func (f,i,x) ->
-         let tx,sx = aux x in
-         begin match get_accessor_type f i types with
+         let tx,lx,sx = aux x in
+         begin match get_accessor_type f i config.types with
          | Some (start,endt) ->
-            let s = unify tx (Litt start) in
-            (Litt endt),(compose_subst s sx)
+            let s = unify tx (G (Litt start)) in
+            (G (Litt endt)),lx,(compose_subst s sx)
          | None -> failwith "todo: unbound function" end
       | Parent (startt,endt,x) ->
-         let tx,sx = aux x in
-         match StringMap.find_opt startt types with
+         let tx,lx,sx = aux x in
+         match StringMap.find_opt startt config.types with
          | Some xs when (exists_end_type endt xs) ->
-            let s = unify tx (Litt endt) in
-            (Litt startt),(compose_subst s sx)
+            let s = unify tx (G (Litt endt)) in
+            (G (Litt startt)),lx,(compose_subst s sx)
          | _ -> failwith "undefined parent"
     in aux x
 
@@ -198,17 +244,47 @@ module Make (Manip : Manip) = struct
        | Has x | Other (_,x) -> [x]
        | Bin (_,x,y) -> [x; y]
 
+  let fst3 (x,_,_) = x
+
   let verif_pred ~predicates xs =
     function
     | Stat (s,_) | Dyn (_,Other (s,_)) ->
        let _,ty = StringMap.find s predicates in
-       unify (fst (List.hd xs)) (Litt ty)
+       unify (fst3 (List.hd xs)) (G (Litt ty))
     | _ -> Subst.empty
 
+  let get_link links clinks vars =
+    let update x v m =
+      let a =
+        match StringMap.find_opt x m with
+        | None -> GroundSet.singleton v
+        | Some xs -> GroundSet.add v xs in
+      StringMap.add x a m in function
+    | Dyn (_,Bin (B Link,_,_)) ->
+       begin match fst3 (List.nth vars 0), fst3 (List.nth vars 1) with
+       | G x, G y ->
+          begin match x,y with
+          | Litt x, Litt y ->
+             verify_links ~links_err links x y;
+             clinks
+          | Vt x,Litt y | Litt y, Vt x ->
+             update x (Litt y) clinks
+          | Vt x, Vt y ->
+             update x (Vt y) (update y (Vt x) clinks)
+          end
+       | _ -> assert false
+       end
+    | _ -> clinks
+
+  let union_links = StringMap.union (fun _ x y -> Some (GroundSet.union x y))
+
   let ti_lit ~config env x =
-    let vars = List.map (ti_var ~types:config.types env) (variables_of_lit x) in
-    let subst = List.fold_left (fun acc v -> Subst.union left_bias (snd v) acc) Subst.empty vars in
-    Subst.union left_bias (verif_pred ~predicates:config.predicates vars x) subst
+    let vars = List.map (ti_var ~config env) (variables_of_lit x) in
+    let subst,clinks =
+      List.fold_left (fun (subst,links) (_,l,s) -> Subst.union left_bias s subst, union_links links l)
+        (Subst.empty,StringMap.empty) vars in
+    let link = get_link config.links clinks vars x in
+    link,Subst.union left_bias (verif_pred ~predicates:config.predicates vars x) subst
 
   let union x y =
     let x' = Subst.fold (fun x _ y -> StringSet.add x y) x StringSet.empty in
@@ -231,31 +307,35 @@ module Make (Manip : Manip) = struct
   let ti_safe ~config env x =
     let rec aux env = function
       | Leaf x ->
-         Safet,ti_lit ~config env x
+         let links,t = ti_lit ~config env x in
+         Safet,links,t
       | Var x ->
-          ti_var ~types:config.types env x
+         ti_var ~config env x
       | Apply (x,y) ->
          let tv = fresh_ty () in
-         let t,s = aux env x in
-         let t',s' = aux (M.map (apply_subst_scheme s) env) y in
+         let t,l,s = aux env x in
+         let t',l',s' = aux (M.map (apply_subst_scheme ~links_err config.links s) env) y in
          let s'' = unify (apply_subst_ty s' t) (Arrow (t', tv)) in
-         apply_subst_ty s'' tv,compose_subst s'' (compose_subst s' s)
+         let l'' =  union_links l l' in
+         apply_subst_ty s'' tv,l'',compose_subst s'' (compose_subst s' s)
       | Quantif (_,x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
-         let subst = ti_lit ~config nenv (Dyn (false,Bin u)) in
-         let t,b = aux nenv b in
+         let l,subst = ti_lit ~config nenv (Dyn (false,Bin u)) in
+         let t,l',b = aux nenv b in
+         let l'' = union_links l l' in
          let s = try_unify t Safet in
-         Safet,union s (union subst b)
+         Safet,l'',union s (union subst b)
       | Formula f ->
-         fold_formula (aux env) (fun x -> x) (fun _ (_,x) (_,y) -> Safet, union x y) f
+         fold_formula (aux env) (fun x -> x) (fun _ (_,l1,x) (_,l2,y) -> Safet, union_links l1 l2, union x y) f
     in aux env x
 
   let type_of_def ~config env args body =
     let args = List.map (fun x -> x,fresh_ty ()) args in
     let env = List.fold_left (fun acc (x,v) -> M.add x (scheme_of_mono v) acc) env args in
-    let t,s = ti_safe ~config env body in
-    let t = applys (List.map (fun (_,v) -> apply_subst_ty s v) args) t in
-    t,s
+    let t,links,subst = ti_safe ~config env body in
+    let t = applys (List.map (fun (_,v) -> apply_subst_ty subst v) args) t in
+    let links = update_links_map ~links_err config.links subst links in
+    t,links,subst
 
   let print_inf verbose name fv =
     match verbose with
@@ -265,7 +345,7 @@ module Make (Manip : Manip) = struct
        print_warning ("The right hand side of " ^ f name ^ " has free variables: " ^ fv)
 
   let ti_let ~verbose ~infer_guards ~config env (Def (name,args,body) as e) =
-    let body,(t,s) =
+    let body,(t,links,subst) =
       try F body,type_of_def ~config env args body
       with
       | Te (UnboundVar _) as err  -> (* unbound var, we try to quantify all the unbound var *)
@@ -280,9 +360,9 @@ module Make (Manip : Manip) = struct
            body',type_of_def ~config nenv args body
          else raise err
       | x -> raise x in
-    let t' = generalize (apply_subst_env s env) t in
+    let t' = generalize (apply_subst_env config.links subst env) links t in
     let env' = M.add name t' env in
-    RDef (name,args,body),s,env'
+    RDef (name,args,body),subst,env'
 
   let ti_lets ~verbose ~infer_guards ~config env xs =
     let ds,s,env =
@@ -299,7 +379,7 @@ module Make (Manip : Manip) = struct
     let fv = S.diff v_xs v_env in
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
-      let t = fst (ti_safe ~config env x) in
+      let t = fst3 (ti_safe ~config env x) in
       if t <> Safet
       then raise (Te (WrongType (t,Safet))) in
     List.iter aux xs
@@ -308,7 +388,7 @@ module Make (Manip : Manip) = struct
     let env = M.empty in
     try
       let tvars,s,env = ti_lets ~verbose ~infer_guards ~config env vars in
-      let env = apply_subst_env s env in
+      let env = apply_subst_env config.links s env in
       verify_safe ~config env safe;
       let tsafe = safe in
       let tensure = ensure in

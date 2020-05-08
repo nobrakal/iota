@@ -1,10 +1,14 @@
 let maxprof = 2
 
 type site
+type rsite
 type mol = m to mol | f to site | g to site
 type mol2 = h to site | 10 r to site
+type mol3 = rs to rsite
 
 static E about mol
 static S about site
 dynamic Active about mol
 dynamic Open about mol
+
+Link rsite to site

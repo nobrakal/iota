@@ -18,11 +18,14 @@ type 'a typed_program =
   ; tensure : ('a, ('a, rbinpred) lit, rbinpred) general list
   ; tmaintain : ('a, ('a, rbinpred) lit, rbinpred) general list }
 
+type ground =
+  | Vt of string (** Type variable *)
+  | Litt of string  (** A known litteral *)
+
 (** Type of monomorphic types *)
 type monoty =
-  | Vt of string (** Type variable *)
+  | G of ground (** A ground type *)
   | Safet (** A safe expression *)
-  | Litt of string (** A known litteral *)
   | Arrow of (monoty * monoty) (** Arrow *)
 
 module type Typecheck =
@@ -33,6 +36,7 @@ module type Typecheck =
     type type_error =
       | UnboundVar of t
       | WrongType of monoty * monoty (* actual, expected *)
+      | Constraint of string * string
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
