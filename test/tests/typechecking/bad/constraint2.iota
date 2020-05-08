@@ -1,0 +1,5 @@
+let link x y = Link(x,y)
+
+in
+
+link x.rs y.m
