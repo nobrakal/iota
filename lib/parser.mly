@@ -155,4 +155,4 @@ predicate:
 | DYNAMIC x=UpperId ABOUT y=LowerId {(x,(true,y))}
 
 link:
-| LINK x=LowerId TO xs=separated_list(COMMA,LowerId) {(x,xs)}
+| LINK x=LowerId TO xs=separated_list(GUARD,LowerId) {(x,xs)}

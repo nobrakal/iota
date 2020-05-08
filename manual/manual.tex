@@ -56,30 +56,37 @@ Nodes, leaves and some operations on trees are \emph{typed}. These types are all
 \label{subsec:predicates}
 Finally, one have to define predicates. A predicate gives information about a node of some type. See Section \ref{para:predicates} for more information.
 
+\subsection{Constraints}
+The \ocaml{Link} predicate is polymorphic but one can constrain its use, and force some types to be linked only to some others.
+
 \subsection{Example}
 Here is a valid configuration file:
 \begin{minted}[frame=lines]{ocaml}
 let maxprof = 10
 
 type site
+type rsite
 type mol = m to mol | f to site | g to site
-type bigmol = 5 tm to mol
+type bigmol = 5 tm to mol | rs to rsite
 
 static E about mol
 dynamic Active about mol
 dynamic Open about site
+
+Link rsite to site
 \end{minted}
 
-This file declares three types:
+This file declares four types:
 
 \begin{itemize}
 \item A leaf \ocaml{site}.
+\item A leaf \ocaml{rsite}.
 \item A node \ocaml{mol} with three possible children:
   \begin{itemize}
   \item An other node \ocaml{mol}.
   \item Two sites \ocaml{f} and \ocaml{g}.
   \end{itemize}
-\item A node \ocaml{bigmol} with five possible children of type \ocaml{mol}.
+\item A node \ocaml{bigmol} with five possible children of type \ocaml{mol}, and one of type \ocaml{rsite}
 \end{itemize}
 
 \section{Semantics of a \Iota{} file}
@@ -107,7 +114,7 @@ Formulas are about literals. A \Iota{} literal is either:
 Predicates can be used to extract information about literals. Some predicates are bundled into the \Iota{} syntax itself:
 \begin{itemize}
 \item \ocaml{Eq} is a binary predicate expressing the fact that two literals are equals. It can be applied to literals of any types.
-\item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types.
+\item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types, except when its use was restricted in the configuration file.
 \item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees of the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
 \item \ocaml{Has} is a unary predicate expressing the \emph{presence} of a literal. It can be applied to literal of any types.
 \end{itemize}
@@ -190,7 +197,8 @@ The compilation is divided into 5 steps:
 The described syntax is parsed using the great \Menhir{}\cite{menhir}.
 
 \subsection{Typechecking}
-Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.
+Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.\\
+As mentioned before, the use of the \ocaml{Link} predicate can be constrained. These constraints are ensured when typing with algorithm W.
 
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
@@ -205,7 +213,7 @@ All the definitions of \Iota{} are \emph{pure}, ie. without any effects, so one 
 
 \paragraph{Compilation of TLink}
 \label{para:tlink}
-The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it to a big disjunction of cases. Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system) possibilities.
+The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it to a big disjunction of cases. Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
 
 \paragraph{Optimization}
 The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
@@ -286,8 +294,11 @@ Comments à-la-OCaml can be used everywhere.
   \lit{static} <hident> \lit{about} <lident>
   \alt \lit{dynamic} <hident> \lit{about} <lident>
 
+  <constraint> ::=
+  \lit{Link} <lident> \lit{to} [<lident> // \lit{|}]
+
   <config> ::=
-  <constants> [<typedef>] [<preddef>]
+  <constants> [<typedef>] [<preddef>] [<constraint>]
 \end{grammar}
 
 \subsection{Syntax of programs}
@@ -320,7 +331,7 @@ Comments à-la-OCaml can be used everywhere.
   \alt `(' <formula> `)'
 
   <safe> ::= <formula>
-  \alt <lident>
+  \alt <term>
   \alt <safe> `&&' <safe>
   \alt <safe> `||' <safe>
   \alt `forall' <lident> <guard> `->' <safe>
