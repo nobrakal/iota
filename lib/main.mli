@@ -26,7 +26,8 @@ val default_options : options
 + Parses it using Menhir.
 + Typechecks it (with {!Iota.Typecheck}).
 + Compiles it to a much simpler final object (with {!Iota.Final}).
-+ Tries to infer some information (with {!Iota.Guard_inference})
++ Tries to infer some information (with {!Iota.Guard_inference}).
++ Does some simplification (with {!Iota.Final}).
 + Ensures its validty (with {!Iota.Structure}).
 
 *)

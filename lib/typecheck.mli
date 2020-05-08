@@ -1,9 +1,6 @@
 open Program
 
-(** This module
-- Runs algorithm W on the code
-- Tries to infer missing guards
- *)
+(** This module runs algorithm W on the code, modified to verify constraints on links. *)
 
 type ('a,'l) rich_pre_safe =
   | F of ('a,'l) pre_safe

@@ -1,6 +1,6 @@
 (** This module compiles a typechecking program to a final one. It
 - Inlines all let definitions.
-- Compiles [TLink] to the corresponding list of [Link].
+- Compiles [TLink] to the corresponding list of [Link] (taking into account links constraint).
 - Simplifies [Link(x.f)] into [x].
  *)
 
