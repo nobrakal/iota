@@ -1,0 +1,1 @@
+E(y) && (forall x Link(x.rs,y) -> Active(y))

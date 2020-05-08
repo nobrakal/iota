@@ -69,21 +69,21 @@ let apply_subst_ground subst x =
   | G x -> x
   | _ -> assert false
 
-let verify_links ~links_err links x y =
-  match StringMap.find_opt x links with
-  | None -> ()
-  | Some xs ->
-     if StringSet.mem y xs
-     then ()
-     else links_err x y
+let mem_opt x = function
+  | None -> true
+  | Some xs -> StringSet.mem x xs
 
-let update_links_map ~links_err links subst m =
+let verify_links ~links_err links x y =
+  if mem_opt y (StringMap.find_opt x  links) && mem_opt x (StringMap.find_opt y links)
+  then () else links_err x y
+
+let update_links_map ~links_err clinks subst m =
   let upd vx lx = function
-    | None -> assert false (* m is symmetric *)
+    | None -> Some (GroundSet.singleton (Litt lx) )(*TODO is this case possible ? *)
     | Some xs -> Some (GroundSet.(add (Litt lx) (remove (Vt vx) xs))) in
   let aux_gs vx lx g m =
     match g with
-    | Litt y -> verify_links ~links_err links lx y; m
+    | Litt y -> verify_links ~links_err clinks lx y; m
     | Vt y -> StringMap.update y (upd vx lx) m in
   let aux x gs m =
     let gs = GroundSet.map (apply_subst_ground subst) gs in
@@ -253,7 +253,7 @@ module Make (Manip : Manip) = struct
        unify (fst3 (List.hd xs)) (G (Litt ty))
     | _ -> Subst.empty
 
-  let get_link links clinks vars =
+  let get_link clinks links vars =
     let update x v m =
       let a =
         match StringMap.find_opt x m with
@@ -265,25 +265,25 @@ module Make (Manip : Manip) = struct
        | G x, G y ->
           begin match x,y with
           | Litt x, Litt y ->
-             verify_links ~links_err links x y;
-             clinks
+             verify_links ~links_err clinks x y;
+             links
           | Vt x,Litt y | Litt y, Vt x ->
-             update x (Litt y) clinks
+             update x (Litt y) links
           | Vt x, Vt y ->
-             update x (Vt y) (update y (Vt x) clinks)
+             update x (Vt y) (update y (Vt x) links)
           end
        | _ -> assert false
        end
-    | _ -> clinks
+    | _ -> links
 
   let union_links = StringMap.union (fun _ x y -> Some (GroundSet.union x y))
 
   let ti_lit ~config env x =
     let vars = List.map (ti_var ~config env) (variables_of_lit x) in
-    let subst,clinks =
+    let subst,links =
       List.fold_left (fun (subst,links) (_,l,s) -> Subst.union left_bias s subst, union_links links l)
         (Subst.empty,StringMap.empty) vars in
-    let link = get_link config.links clinks vars x in
+    let link = get_link config.links links vars x in
     link,Subst.union left_bias (verif_pred ~predicates:config.predicates vars x) subst
 
   let union x y =
@@ -304,6 +304,10 @@ module Make (Manip : Manip) = struct
     with
       Exit -> raise (Te (WrongType (x, y)))
 
+  let union_links' ~config x s1 y s2 =
+    union_links (update_links_map ~links_err config.links s1 x)
+      (update_links_map ~links_err config.links s2 y)
+
   let ti_safe ~config env x =
     let rec aux env = function
       | Leaf x ->
@@ -316,17 +320,20 @@ module Make (Manip : Manip) = struct
          let t,l,s = aux env x in
          let t',l',s' = aux (M.map (apply_subst_scheme ~links_err config.links s) env) y in
          let s'' = unify (apply_subst_ty s' t) (Arrow (t', tv)) in
-         let l'' =  union_links l l' in
-         apply_subst_ty s'' tv,l'',compose_subst s'' (compose_subst s' s)
+         let subst = compose_subst s'' (compose_subst s' s) in
+         let l'' = union_links' ~config l subst l' subst in
+         apply_subst_ty s'' tv,l'', subst
       | Quantif (_,x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
          let l,subst = ti_lit ~config nenv (Dyn (false,Bin u)) in
          let t,l',b = aux nenv b in
-         let l'' = union_links l l' in
          let s = try_unify t Safet in
-         Safet,l'',union s (union subst b)
+         let subst' = union s (union subst b) in
+         let l'' = union_links' ~config l subst' l' subst' in
+         Safet,l'',subst'
       | Formula f ->
-         fold_formula (aux env) (fun x -> x) (fun _ (_,l1,x) (_,l2,y) -> Safet, union_links l1 l2, union x y) f
+         fold_formula (aux env) (fun x -> x)
+           (fun _ (_,l1,x) (_,l2,y) -> Safet, union_links' ~config l1 x l2 y, union x y) f
     in aux env x
 
   let type_of_def ~config env args body =
