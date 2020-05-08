@@ -52,7 +52,7 @@ let main options config lexbuf =
         | Error e -> Error (Type e)
         | Ok ast ->
            (* Inline every possible defintion of a valid program *)
-           let ast = Final.final_of_program ~maxprof:config.maxprof ~types:config.types ast in
+           let ast = Final.final_of_program ~config ast in
            (* Try to infer guards *)
            match Guard_inference.run ast with
            | Error e -> Error (GuardInference e)

@@ -1,6 +1,8 @@
 open Program
 open Typecheck
 open Final_def
+open Utils
+open Config
 
 (* intermediate language allowing bracket *)
 type ('a,'l) intermediary =
@@ -133,12 +135,12 @@ let rec iter_bind n x f =
   then x
   else iter_bind (n-1) (bind x f) f
 
-let fold_paths ~maxprof ~(types : Config.accessor list Utils.StringMap.t) fold link x y =
+let fold_paths ~config fold link x y =
   let link x y = link (fst x) (fst y) in
   let paths x =
-    iter_bind maxprof [x]
+    iter_bind config.maxprof [x]
       (fun (x,xt) ->
-        match Utils.StringMap.find_opt xt types with
+        match Utils.StringMap.find_opt xt config.types with
         | Some xs -> List.(concat (map (extract_possible_child x) xs))
         | None -> failwith "TODO: unknown type") in
   match paths x, paths y with
@@ -150,31 +152,31 @@ let fold_paths ~maxprof ~(types : Config.accessor list Utils.StringMap.t) fold l
          List.fold_left (aux x) acc (y::ys))
        (List.fold_left (aux x) (link x y) ys) xs
 
-let lit ~maxprof ~types x =
+let lit ~config x =
   match lit' x with
   | Ok x -> Lit x
   | Error (b, ((s1,s2),x,y)) ->
      let link x y = Lit (Dyn (b,(Bin (Link, x, y)))) in
      let fold a b = Binop (Or,a,b) in
-     fold_paths ~maxprof ~types fold link (x,s1) (y,s2)
+     fold_paths ~config fold link (x,s1) (y,s2)
 
-let remove_tlink ~maxprof ~types f =
-  fold_formula (lit ~maxprof ~types) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
+let remove_tlink ~config f =
+  fold_formula (lit ~config) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
-let fsafe_of_safe ~maxprof ~types x =
+let fsafe_of_safe ~config x =
   let quantif f g =
     match g with
     | (B g,x,y) -> f (g,x,y)
     | (TLink (s1,s2),x,y) ->
        let link x y = f (Link, x, y) in
        let fold a b = PFormula (Binop (And, (Lit a), (Lit b))) in
-       fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
+       fold_paths ~config fold link (x,s1) (y,s2) in
   let rec aux x =
     match x with
     | IVar _ | IApply _ ->
        assert false
     | ILeaf y ->
-       PFormula (map_formula (fun x -> PLeaf x) (lit ~maxprof ~types y))
+       PFormula (map_formula (fun x -> PLeaf x) (lit ~config y))
     | IQuantif (q,x,g,a) ->
        quantif (fun g -> PQuantif (q, x, g, aux a)) g
     | IFormula f ->
@@ -190,14 +192,14 @@ let conj xs =
         (fun acc x -> bind acc (fun ys -> fmap (fun y -> y::ys) x))
         ([[]]) xs
 
-let remove_tlink_general ~maxprof ~types (General (xs,f)) =
-  let f = remove_tlink ~maxprof ~types f in
+let remove_tlink_general ~config (General (xs,f)) =
+  let f = remove_tlink ~config f in
   let fold = List.append in
   let link x y = [(Link,x,y)] in
   let aux x =
     match x with
     | (B b, x, y) -> [(b,x,y)]
-    | (TLink (s1,s2), x, y) -> fold_paths ~maxprof ~types fold link (x,s1) (y,s2) in
+    | (TLink (s1,s2), x, y) -> fold_paths ~config fold link (x,s1) (y,s2) in
   let xs = conj (List.map aux xs) in
   List.map (fun x -> General (x, f)) xs
 
@@ -223,20 +225,20 @@ let simpl_parent_func_g (General (xs,f)) =
   let f = map_formula simpl_parent_func_p f in
   General (xs,f)
 
-let final_of_program ~maxprof ~types ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
+let final_of_program ~config ({tvars;tsafe;tensure;tmaintain} : string Typecheck.typed_program)
     : string Final_def.pre_final_program =
   let vars = inline_vars_in_vars tvars in
   let fsafe =
     List.map (fun x ->
         simpl_parent_func_s
-        @@ fsafe_of_safe ~maxprof ~types
+        @@ fsafe_of_safe ~config
         @@ safe_of_nf
         @@ normal_form vars
         @@ inj_intermediate x) tsafe in
   let fensure =
     List.map simpl_parent_func_g @@
-    bind tensure (fun x -> remove_tlink_general ~maxprof ~types x) in
+    bind tensure (fun x -> remove_tlink_general ~config x) in
   let fmaintain =
     List.map simpl_parent_func_g @@
-    bind tmaintain (fun x -> remove_tlink_general ~maxprof ~types x) in
+    bind tmaintain (fun x -> remove_tlink_general ~config x) in
   {fsafe; fensure; fmaintain}
