@@ -83,7 +83,7 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
     in aux xs
 
   let newformula (body : (t, (t, binpred) lit) fsafe) xs =
-    List.fold_right (fun (e,y) acc -> FQuantif (Exists,e,y,acc)) xs body
+    List.fold_right (fun (e,y) acc -> FQuantif (Exists,e,[y],acc)) xs body
 
   exception Err of t list
 

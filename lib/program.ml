@@ -36,7 +36,7 @@ type ('a,'l) pre_safe =
   | Leaf of 'l
   | Var of 'a var
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Quantif of quantif * 'a * ('a, rbinpred) guard list * ('a,'l) pre_safe
 
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 
@@ -148,6 +148,9 @@ let string_of_formula lit =
 
 let print_formula lit x = print_endline (string_of_formula lit x)
 
+let string_of_guards s p xs =
+  paren (String.concat " || " (List.map (string_of_guard s p) xs))
+
 let string_of_safe s p x =
   let rec aux = function
     | Leaf x -> s x
@@ -155,9 +158,9 @@ let string_of_safe s p x =
     | Apply (x,y) ->
        paren (aux x) ^ paren (aux y)
     | Quantif (Forall,x,y,z) ->
-       "forall " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
+       "forall " ^ p x  ^ string_of_guards p string_of_rbinpred y ^ paren (aux z)
     | Quantif (Exists,x,y,z) ->
-       "exists " ^ p x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
+       "exists " ^ p x  ^ string_of_guards p string_of_rbinpred y ^ paren (aux z)
     | Formula f -> string_of_formula aux f
   in aux x
 
@@ -249,18 +252,20 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 
+  let variables_of_guards = List.fold_left (fun acc x -> S.union acc (variables_of_guard x)) S.empty
+
   let rec variables_of_safe = function
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton (extract_var x)
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Quantif (_,_,f,x) -> S.union (variables_of_guard f) (variables_of_safe x)
+    | Quantif (_,_,f,x) -> S.union (variables_of_guards f) (variables_of_safe x)
     | Formula f -> fold_fomula_union variables_of_safe f
 
   let rec fv_of_safe = function
     | Leaf f -> variables_of_lit f
     | Var x -> S.singleton (extract_var x)
     | Apply (x,y) -> S.union (variables_of_safe x) (variables_of_safe y)
-    | Quantif (_,u,f,x) -> S.remove u (S.union (variables_of_guard f) (variables_of_safe x))
+    | Quantif (_,u,f,x) -> S.remove u (S.union (variables_of_guards f) (variables_of_safe x))
     | Formula f -> fold_fomula_union fv_of_safe  f
 
   let fv_of_def (Def (_,xs,x)) =

@@ -29,6 +29,8 @@ type ('a,'b) guard = 'b * 'a var * 'a var
 
 val string_of_guard : ('a -> string) -> ('b -> string) -> ('a,'b) guard -> string
 
+val string_of_guards : ('a -> string) -> ('b -> string) -> ('a,'b) guard list -> string
+
 type ('a,'b) dynamic =
   | Has of 'a var
   | Bin of ('a,'b) guard
@@ -66,7 +68,7 @@ type ('a,'l) pre_safe =
   | Leaf of 'l
   | Var of 'a var
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
-  | Quantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) pre_safe
+  | Quantif of quantif * 'a * ('a, rbinpred) guard list * ('a,'l) pre_safe
 
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe

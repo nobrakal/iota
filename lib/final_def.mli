@@ -9,13 +9,13 @@ type tag =
 
 type ('a,'l) pre_fsafe =
   PLeaf of 'l
-| PQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) pre_fsafe
+| PQuantif of quantif * 'a * ('a, binpred) guard list * ('a,'l) pre_fsafe
 | PBracket of 'a list * ('a,'l) pre_fsafe
 | PFormula of ('a,'l) pre_fsafe formula
 
 type ('a,'l) fsafe =
   FLeaf of tag * 'l
-| FQuantif of quantif * 'a * ('a, binpred) guard * ('a,'l) fsafe
+| FQuantif of quantif * 'a * ('a, binpred) guard list * ('a,'l) fsafe
 | FBinop of binop * ('a,'l) fsafe * ('a,'l) fsafe
 
 val string_of_fsafe : ('b -> string) -> ('a -> string) -> ('a,'b) fsafe -> string

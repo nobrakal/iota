@@ -308,6 +308,15 @@ module Make (Manip : Manip) = struct
     union_links (update_links_map ~links_err config.links s1 x)
       (update_links_map ~links_err config.links s2 y)
 
+  let ti_guards ~config env xs =
+    let xs = List.map (fun u -> ti_lit ~config env (Dyn (false,Bin u))) xs in
+    match xs with
+    | [] -> assert false
+    | x::xs ->
+       List.fold_left
+         (fun (l,subst) (l',subst') -> union_links' ~config l subst' l' subst' ,union subst subst')
+         x xs
+
   let ti_safe ~config env x =
     let rec aux env = function
       | Leaf x ->
@@ -325,7 +334,7 @@ module Make (Manip : Manip) = struct
          apply_subst_ty s'' tv,l'', subst
       | Quantif (_,x,u,b) ->
          let nenv = M.add x (scheme_of_mono (fresh_ty ())) env in
-         let l,subst = ti_lit ~config nenv (Dyn (false,Bin u)) in
+         let l,subst = ti_guards ~config nenv u in
          let t,l',b = aux nenv b in
          let s = try_unify t Safet in
          let subst' = union s (union subst b) in

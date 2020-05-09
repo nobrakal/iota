@@ -1,0 +1,1 @@
+forall x (Eq(x,y) || Eq(x,z)) -> E(x)

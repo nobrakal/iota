@@ -20,28 +20,8 @@ type ('a,'l) intermediary =
   | ILeaf of 'l
   | IVar of 'a var
   | IApply of ('a,'l) intermediary * ('a,'l) intermediary
-  | IQuantif of quantif * 'a * ('a, rbinpred) guard * ('a,'l) intermediary
+  | IQuantif of quantif * 'a * ('a, rbinpred) guard list * ('a,'l) intermediary
   | IBracket of 'a list *  ('a,'l) intermediary
-
-let _string_of_intermediary x =
-  let p x = x in
-  let s x = string_of_lit p string_of_rbinpred x in
-  let open Utils in
-  let string_of_list f xs =
-    String.concat "," (List.map f xs) in
-  let rec aux = function
-    | ILeaf x -> s x
-    | IVar x -> string_of_var p x
-    | IApply (x,y) ->
-       paren (aux x) ^ paren (aux y)
-    | IQuantif (Forall,x,y,z) ->
-       "forall " ^ x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
-    | IQuantif (Exists,x,y,z) ->
-       "exists " ^ x  ^ paren (string_of_guard p string_of_rbinpred y) ^ paren (aux z)
-    | IFormula f -> string_of_formula aux f
-    | IBracket (xs,z) ->
-       "bracket [" ^ string_of_list p xs ^ "] " ^ paren (aux z)
-  in aux x
 
 type ('a,'l) nf =
   | Safe of ('a,'l) intermediary
@@ -187,12 +167,12 @@ let remove_tlink ~config f =
   fold_formula (lit ~config) (fun x -> Not x) (fun b x y -> Binop (b,x,y)) f
 
 let fsafe_of_safe ~config x =
-  let quantif f g =
+  let quantif g =
     match g with
-    | (B g,x,y) -> f (g,x,y)
+    | (B g,x,y) -> [(g,x,y)]
     | (TLink (s1,s2),x,y) ->
-       let link x y = f (Link, x, y) in
-       let fold a b = PFormula (Binop (And, (Lit a), (Lit b))) in
+       let link x y = [Link, x, y] in
+       let fold a b = a @ b in
        fold_paths ~config fold link (x,s1) (y,s2) in
   let rec aux x =
     match x with
@@ -201,7 +181,7 @@ let fsafe_of_safe ~config x =
     | ILeaf y ->
        PFormula (map_formula (fun x -> PLeaf x) (lit ~config y))
     | IQuantif (q,x,g,a) ->
-       quantif (fun g -> PQuantif (q, x, g, aux a)) g
+       PQuantif(q,x,List.(concat (map quantif g)), aux a)
     | IFormula f ->
        PFormula (map_formula aux f)
     | IBracket (fv,body) ->
@@ -239,7 +219,7 @@ let simpl_parent_func_p = map_lit simpl_parent_func
 let rec simpl_parent_func_s (x : ('a,'l) pre_fsafe) =
   match x with
   | PLeaf x -> PLeaf (simpl_parent_func_p x)
-  | PQuantif (q,x,g,f) -> PQuantif (q,x,simpl_parent_func_b g, simpl_parent_func_s f)
+  | PQuantif (q,x,g,f) -> PQuantif (q,x,List.map simpl_parent_func_b g, simpl_parent_func_s f)
   | PBracket (xs,f) -> PBracket (xs, simpl_parent_func_s f)
   | PFormula f -> PFormula (map_formula simpl_parent_func_s f)
 
