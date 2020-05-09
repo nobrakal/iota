@@ -42,23 +42,23 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
     let fv = M.S.of_list fv in
     let lit fv l =
       match l with
-      | Stat _ | Dyn (true,_) -> None
+      | Stat _ | Dyn (true,_) -> []
       | Dyn (false,x) ->
          match x with
-         | Has _ | Other _ -> None
+         | Has _ | Other _ -> []
          | Bin (b,x,y) ->
             let x' = extract_var x in
             let y' = extract_var y in
              if (v = x' && v <> y' && not (M.S.mem y' fv))
                || (v = y' && v <> x' && not (M.S.mem x' fv))
-            then Some (b,x,y)
-            else None in
+            then [(b,x,y)]
+            else [] in
     let binop b x y =
       match b with
-      | Or -> None (* TODO *)
+      | Or -> x@y (* TODO *)
       | And ->
          match x with
-         | None -> y
+         | [] -> y
          | _ -> x in
     let rec aux fv x =
       match x with
@@ -68,9 +68,12 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
          aux (M.S.add y fv) f
       | FLeaf (i,l) ->
          match i with
-         | N -> None
+         | N -> []
          | E -> lit fv l
-    in aux fv x
+    in
+    match aux fv x with
+    | [] -> None
+    | xs -> Some xs
 
   let try_permut body xs =
     let rec aux xs =
@@ -83,7 +86,7 @@ module Make(M : Manip) : Guard_inference with type t = M.t = struct
     in aux xs
 
   let newformula (body : (t, (t, binpred) lit) fsafe) xs =
-    List.fold_right (fun (e,y) acc -> FQuantif (Exists,e,[y],acc)) xs body
+    List.fold_right (fun (e,y) acc -> FQuantif (Exists,e,y,acc)) xs body
 
   exception Err of t list
 
