@@ -140,6 +140,7 @@ module type Typecheck =
       | UnboundVar of t
       | WrongType of monoty * monoty (* actual, expected *)
       | Constraint of string * string
+      | UnInstanciableVar
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
@@ -157,6 +158,7 @@ module Make (Manip : Manip) = struct
     | UnboundVar of Manip.t
     | WrongType of monoty * monoty (* actual, expected *)
     | Constraint of string * string
+    | UnInstanciableVar
 
   exception Te of type_error
 
@@ -170,6 +172,10 @@ module Make (Manip : Manip) = struct
     | Constraint (x,y) ->
        "Type error:\n"
        ^ "Trying to link " ^ x ^ " with " ^ y
+    | UnInstanciableVar ->
+       "Type error:\n"
+       ^ "unable to instanciate the type of a free type variable"
+
 
   let unify x y =
     try unify x y with
@@ -389,15 +395,48 @@ module Make (Manip : Manip) = struct
     in
     List.rev ds,s,env
 
+  let keys xs =  StringMap.fold (fun x _ acc -> x::acc) xs []
+
+  let can_instanciate_types ~types env clinks links =
+    let types = List.map (fun x -> G (Litt x)) (keys types) in
+    let vars = keys links in
+    let try_ty x (penv,plinks) t =
+      try
+        let penv = (Subst.add x t penv) in
+        Some (penv,update_links_map ~links_err clinks penv plinks)
+      with
+      | Te (Constraint _) -> None in
+    let rec aux' pp x xs ts =
+      match ts with
+      | [] -> None
+      | t::ts ->
+         match try_ty x pp t with
+         | None -> aux' pp x xs ts
+         | Some npp ->
+            let res = aux npp xs in
+            match res with
+            | None -> aux' pp x xs ts
+            | _ -> res
+     and aux pp (xs : string list) =
+      match xs with
+      | [] -> Some pp
+      | x::xs -> aux' pp x xs types
+    in
+    match aux (env,links) vars with
+    | Some _ -> true
+    | None -> false
+
   let verify_safe ~config env xs =
     let v_env = M.fold (fun k _ s -> S.add k s) env S.empty in
     let v_xs = List.fold_left S.union S.empty (List.map variables_of_safe xs) in
     let fv = S.diff v_xs v_env in
     let env = S.fold (fun k env -> M.add k (scheme_of_mono (fresh_ty ())) env) fv env in
     let aux x =
-      let t = fst3 (ti_safe ~config env x) in
+      let t,links,subst = ti_safe ~config env x in
       if t <> Safet
-      then raise (Te (WrongType (t,Safet))) in
+      then raise (Te (WrongType (t,Safet)));
+      if not (can_instanciate_types ~types:config.types subst config.links links)
+      then raise (Te (UnInstanciableVar)) in
     List.iter aux xs
 
   let typecheck_program ~verbose ~infer_guards ~config {vars; safe; ensure; maintain} =
