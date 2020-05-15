@@ -34,6 +34,7 @@ module type Typecheck =
       | UnboundVar of t
       | WrongType of monoty * monoty (* actual, expected *)
       | Constraint of string * string
+      | UnInstanciableVar
 
     val string_of_type_error : (t -> string) -> type_error -> string
 
