@@ -1,6 +1,5 @@
 module Manip = Program.Manip(String)
 module Structure = Structure.Make(Manip)
-module Guard_inference = Guard_inference.Make(Manip)
 
 open Config
 
@@ -23,7 +22,7 @@ let print_err x =
     | Structure e ->
        "Structure: " ^ Structure.string_of_invalidity e
     | GuardInference e ->
-       "GuardInference: " ^ Guard_inference.string_of_err (fun x -> x) e
+       "GuardInference: " ^ Guard_inference.string_of_err e
     | Simplification e ->
        "Simplification: " ^ Final.string_of_err e
   in Printf.eprintf "%s\n" str

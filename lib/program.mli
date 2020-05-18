@@ -121,12 +121,14 @@ module type Manip =
 
     module S : Set.S with type elt = t
     val to_list : S.t -> S.elt list
+    val unions : S.t list -> S.t
     module M : Map.S with type key = t
 
     val variables_of_dynamic : (S.elt,'a) dynamic -> S.t
     val variables_of_lit : (S.elt,'a) lit -> S.t
     val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
+    val variables_of_guards : (S.elt,'a) guard list -> S.t
 
     val fv_of_safe : S.elt safe -> S.t
     val fv_of_def : (S.elt, (S.elt, rbinpred) lit) def -> S.t

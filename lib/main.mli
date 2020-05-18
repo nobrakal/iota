@@ -1,6 +1,5 @@
 module Manip : Program.Manip with type t = String.t
 module Structure : Structure.Structure with type t = String.t
-module Guard_inference : Guard_inference.Guard_inference with type t = String.t
 
 type err =
   | Menhir

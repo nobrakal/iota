@@ -1,0 +1,5 @@
+let f x = Link (z,x)
+
+in
+
+f z

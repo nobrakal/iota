@@ -232,12 +232,14 @@ module type Manip =
 
     module S : Set.S with type elt = t
     val to_list : S.t -> S.elt list
+    val unions : S.t list -> S.t
     module M : Map.S with type key = t
 
     val variables_of_dynamic : (S.elt,'a) dynamic -> S.t
     val variables_of_lit : (S.elt,'a) lit -> S.t
     val variables_of_formula : (S.elt,'a) lit formula -> S.t
     val variables_of_safe : S.elt safe -> S.t
+    val variables_of_guards : (S.elt,'a) guard list -> S.t
 
     val fv_of_safe : S.elt safe -> S.t
     val fv_of_def : (S.elt, (S.elt, rbinpred) lit) def -> S.t
@@ -247,7 +249,9 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
   type t = V.t
   module S = Set.Make(V)
   module M = Map.Make(V)
+
   let to_list s = S.fold (fun x y -> x::y) s []
+  let unions xs = List.fold_left S.union S.empty xs
 
   let fold_fomula_union f x =
     fold_formula f (fun x -> x) (fun _ -> S.union) x
@@ -265,7 +269,7 @@ module Manip (V : Set.OrderedType) : Manip with type t = V.t = struct
 
   let variables_of_guard (_,x,y) = S.of_list [extract_var x; extract_var y]
 
-  let variables_of_guards = List.fold_left (fun acc x -> S.union acc (variables_of_guard x)) S.empty
+  let variables_of_guards xs = List.fold_left (fun acc x -> S.union acc (variables_of_guard x)) S.empty xs
 
   let rec variables_of_safe = function
     | Leaf f -> variables_of_lit f

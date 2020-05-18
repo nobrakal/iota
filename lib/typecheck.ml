@@ -46,6 +46,12 @@ let fresh_ty =
   internal_counter := !internal_counter + 1;
   G (Vt ("_" ^ string_of_int ! internal_counter))
 
+let fresh_free =
+  let internal_counter = ref 0 in
+  fun () ->
+  internal_counter := !internal_counter + 1;
+  "_freevar_" ^ string_of_int ! internal_counter
+
 let rec fv_of_ty = function
   | G (Litt _) | Safet -> StringSet.empty
   | G (Vt x) -> StringSet.singleton x
@@ -356,8 +362,13 @@ let ti_let ~verbose ~infer_guards ~config env (Def (name,args,body) as e) =
        print_inf verbose name fvs;
        if infer_guards
        then
-         let nenv = List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env fvs in
-         let body' = Bracket (fvs,body) in
+         let nfvs = List.map (fun x -> x,(fresh_free ())) fvs in
+         let body =
+           map_pre_safe (fun x -> Option.fold ~none:x ~some:(fun x -> x) (List.assoc_opt x nfvs)) body in
+         let nfvs = List.map snd nfvs in
+         let nenv =
+           List.fold_left (fun env x -> M.add x (scheme_of_mono (fresh_ty ())) env) env nfvs in
+         let body' = Bracket (nfvs,body) in
          body',type_of_def ~config nenv args body
        else raise err
     | x -> raise x in
@@ -374,7 +385,7 @@ let ti_lets ~verbose ~infer_guards ~config env xs =
   in
   List.rev ds,s,env
 
-let keys xs =  StringMap.fold (fun x _ acc -> x::acc) xs []
+let keys xs = StringMap.fold (fun x _ acc -> x::acc) xs []
 
 let can_instanciate_types ~types env clinks links =
   let types = List.map (fun x -> G (Litt x)) (keys types) in

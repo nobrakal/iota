@@ -29,6 +29,8 @@ type ('a,'s) pre_fprogram =
 type 'a pre_final_program = ('a, ('a, ('a, binpred) lit) pre_fsafe) pre_fprogram
 type 'a final_program = ('a, ('a, ('a, binpred) lit) fsafe) pre_fprogram
 
+val replace_generated_vars : (string, (string, 'a) Program.lit) fsafe -> (string, (string, 'a) Program.lit) fsafe
+
 val string_of_final : string final_program -> string
 
 val print_final : string final_program -> unit

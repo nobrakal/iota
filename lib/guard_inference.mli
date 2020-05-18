@@ -1,17 +1,8 @@
-open Program
 open Final_def
 
 (** This module tries to infer missing guards and moves negation only on leaves. *)
+type err
 
-module type Guard_inference = sig
-  type t
-  module M : Manip with type t = t
+val string_of_err : err -> string
 
-  type err
-
-  val string_of_err : (t -> string) -> err -> string
-
-  val run : t pre_final_program -> (t final_program,err) result
-end
-
-module Make(M : Manip) : Guard_inference with type t = M.t
+val run : string pre_final_program -> (string final_program,err) result
