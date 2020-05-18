@@ -25,23 +25,14 @@ type monoty =
   | Safet (** A safe expression *)
   | Arrow of (monoty * monoty) (** Arrow *)
 
-module type Typecheck =
-  sig
+type type_error =
+  | UnboundVar of string
+  | WrongType of monoty * monoty (* actual, expected *)
+  | Constraint of string * string
+  | UnInstanciableVar
 
-    type t
+val string_of_type_error : type_error -> string
 
-    type type_error =
-      | UnboundVar of t
-      | WrongType of monoty * monoty (* actual, expected *)
-      | Constraint of string * string
-      | UnInstanciableVar
-
-    val string_of_type_error : (t -> string) -> type_error -> string
-
-    val typecheck_program :
-      verbose:((t -> string) option) -> infer_guards:bool ->
-      config:Config.config -> t program -> (t typed_program,type_error) result
-  end
-
-
-module Make(Manip : Manip) : Typecheck with type t = Manip.t
+val typecheck_program :
+  verbose:bool -> infer_guards:bool ->
+  config:Config.config -> string program -> (string typed_program,type_error) result

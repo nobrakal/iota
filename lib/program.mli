@@ -70,6 +70,8 @@ type ('a,'l) pre_safe =
   | Apply of ('a,'l) pre_safe * ('a,'l) pre_safe
   | Quantif of quantif * 'a * ('a, rbinpred) guard list * ('a,'l) pre_safe
 
+val map_pre_safe : ('a -> 'b) -> ('a, ('a,'c) lit) pre_safe -> ('b, ('b,'c) lit) pre_safe
+
 (** A safe syntax with some meaning *)
 type 'a safe = ('a, ('a, rbinpred) lit) pre_safe
 

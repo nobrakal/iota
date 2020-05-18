@@ -89,6 +89,19 @@ let fold_formula l u b =
 let map_formula f x =
   fold_formula (fun x -> Lit (f x)) (fun x -> Not x) (fun a b c -> Binop (a,b,c)) x
 
+let map_guard f (x,y,z) = (x,f y,f z)
+
+let map_pre_safe f' x =
+  let f = map_var f' in
+  let rec aux x =
+  match x with
+  | Formula x -> Formula (map_formula aux x)
+  | Leaf l -> Leaf (map_lit f l)
+  | Var x -> Var (f x)
+  | Apply (x,y) -> Apply (aux x, aux y)
+  | Quantif (q,x,xs,z) ->  Quantif (q,f' x,List.map (map_guard f) xs,aux z)
+  in aux x
+
 type parse_error =
   | UnboundDynamic of string
   | UnboundSymbol of string
