@@ -142,10 +142,10 @@ Has(x) && (not (Open(x.t)) || +Link(x.t,y.g))
 \subsection{Toward first-order}
 Then, one can construct first-order formulas using the two following structures:
 \begin{itemize}
-\item \ocaml{forall x guard(x,y) -> formula(x)}
-\item \ocaml{exists x guard(x,y) && formula(x)}
+\item \ocaml{forall x guards(x,y) -> formula(x)}
+\item \ocaml{exists x guards(x,y) && formula(x)}
 \end{itemize}
-Notice that each quantified variable is \emph{guarded}.
+Notice that each quantified variable is \emph{guarded} by a (disjunctive) non-empty list of guards.
 
 \paragraph{Guard}
 A guard is a binary predicate involving exactly its two arguments. In \Iota{}, a guard is either \ocaml{Eq}, \ocaml{Link} or \ocaml{TLink}.
