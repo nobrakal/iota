@@ -3,6 +3,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
 \usepackage{hyperref}
+\usepackage{subfig}
 
 \newcommand\Iota{\textsc{Iota}}
 \newcommand\Menhir{\textsc{Menhir}}
@@ -70,6 +71,8 @@ type mol = m to mol | f to site | g to site
 type bigmol = 5 tm to mol | rs to rsite
 
 static E about mol
+static S about rsite
+static R about rsite
 dynamic Active about mol
 dynamic Open about site
 
@@ -88,6 +91,8 @@ This file declares four types:
   \end{itemize}
 \item A node \ocaml{bigmol} with five possible children of type \ocaml{mol}, and one of type \ocaml{rsite}
 \end{itemize}
+
+The last line specify a constraint: a leaf of type \ocaml{rsite} can be only linked to leaves of type \ocaml{site}.
 
 \section{Semantics of a \Iota{} file}
 Here is given semantics to the syntax fully described in Section \ref{subsec:syntaxprog}. A \Iota{} program is a file composed of four parts (the last three are exactly from Husson's thesis) :
@@ -118,7 +123,6 @@ Predicates can be used to extract information about literals. Some predicates ar
 \item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees of the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
 \item \ocaml{Has} is a unary predicate expressing the \emph{presence} of a literal. It can be applied to literal of any types.
 \end{itemize}
-
 The user can specify other predicates using the configuration file (see Section \ref{subsec:predicates}). Note that user-defined predicates are \emph{typed}, meaning that, once defined, they can be applied only to one type of literal.
 
 \paragraph{Static vs Dynamic}
@@ -148,7 +152,7 @@ A guard is a binary predicate involving exactly its two arguments. In \Iota{}, a
 
 \subsection{Writing programs}
 Now, we can wire up all these definitions using a standard let-syntax. Let-definitions are of the following form:
-\begin{minted}{ocaml}
+\begin{minted}[frame=lines]{ocaml}
 let e x = E(x)
 let f h x y = (h x) && (e y)
 \end{minted}
@@ -169,6 +173,7 @@ A program is optionally followed by two lists:
 These lists are composed of formulas are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
 
 \subsection{Examples}
+\label{configex}
 \begin{minted}[frame=lines]{ocaml}
 let activate_and_link x y = Link (x.f, y.g) && +Active(x)
 
@@ -198,7 +203,78 @@ The described syntax is parsed using the great \Menhir{}\cite{menhir}.
 
 \subsection{Typechecking}
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.\\
-As mentioned before, the use of the \ocaml{Link} predicate can be constrained. These constraints are ensured when typing with algorithm W.
+
+\subsubsection{About constraints}
+As mentioned before, the use of the \ocaml{Link} predicate can be constrained. Defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
+\begin{itemize}
+\item $None$ means that a node of this type can be linked to any node of any other type.
+\item $Some\ xs$ means that a node of this type can only be linked to node that have types in $xs$.
+\end{itemize}
+When typing with algorithm W, each definition carries a map of type $typevariable \to (typevariable, type)\ either$ registering which variable is linked to which type. Then, when discovering the ground type corresponding to a type variable, we can ensure that constraints are respected.
+
+For example (using the configuration given in Section \ref{configex}):
+\begin{minted}[frame=lines]{ocaml}
+let f x y z = R(x) && Link(x,y) && Link(y,z)
+in
+S(b) && f a b c
+\end{minted}
+The typing of \ocaml{f} generates (using Greek letters for type variable):\\
+
+\begin{figure}[H]
+  \centering
+  \subfloat[The environment]{
+    \begin{tabular}{l|l}
+      Variable& Type\\
+      \hline
+      x&$rsite$\\
+      y&$\alpha$\\
+      z&$\beta$
+    \end{tabular}
+  }
+  \quad\quad
+  \subfloat[The link map]{
+    \begin{tabular}{l|l}
+      Type Variable&Links\\
+      \hline
+      $\alpha$ & $rsite, \beta$\\
+      $\beta$ & $\alpha$
+    \end{tabular}
+  }
+\end{figure}
+
+Next, the typing of the main part gives:
+\begin{figure}[H]
+  \centering
+  \subfloat[The configuration]{
+    \begin{tabular}{l|l}
+      Type& Type\\
+      \hline
+      $rsite$&$site$
+    \end{tabular}
+  }
+  \quad\quad
+  \subfloat[The environment]{
+    \begin{tabular}{l|l}
+      Variable& Type\\
+      \hline
+      a&$rsite$\\
+      b&$site$\\
+      c&$\beta$
+    \end{tabular}
+  }
+  \quad\quad
+  \subfloat[The link map]{
+    \begin{tabular}{l|l}
+      Type Variable&Links\\
+      \hline
+      $\beta$ & $site$
+    \end{tabular}
+  }
+\end{figure}
+
+Note that the line about the type variable $\alpha$ in tabular $(c)$ was dropped since we identified that $\alpha$ was instantiated here to $site$ \emph{and this specialization was legal regarding the configuration and the link map}.
+
+We can then instantiated $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
