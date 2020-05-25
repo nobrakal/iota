@@ -39,13 +39,13 @@ A \Iota{} program needs to be configured. For this purpose, users need to provid
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \subsection{The maxprof parameter}
-All trees have \emph{bound} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
+All trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
 Nodes, leaves and some operations on trees are \emph{typed}. These types are all defined in the configuration file, and are grouped in two families:
 \begin{itemize}
-\item Types without accessors. They will represent leaves.
-\item Types with accessors (they will represent nodes). There is two type of accessors:
+\item Types without accessors; they will represent leaves.
+\item Types with accessors; they will represent nodes). There is two type of accessors:
   \begin{itemize}
   \item A simple accessor composed by a name and a type.
   \item Multiple accessors, composed by a name, a number and a type. The syntax \ocaml{10 f to site} will allow the use, on a variable \ocaml{x}, of \ocaml{x.f:0}, \ocaml{x.f:1}, to \ocaml{x.f:9}. This is semantically equivalent to define 10 different accessors.
@@ -55,7 +55,7 @@ Nodes, leaves and some operations on trees are \emph{typed}. These types are all
 
 \subsection{Predicates}
 \label{subsec:predicates}
-Finally, one have to define predicates. A predicate gives information about a node of some type. See Section \ref{para:predicates} for more information.
+One have to define predicates. A predicate gives information about a node of some type. See Section \ref{para:predicates} for more information.
 
 \subsection{Constraints}
 The \ocaml{Link} predicate is polymorphic but one can constrain its use, and force some types to be linked only to some others.
@@ -71,7 +71,7 @@ type mol = m to mol | f to site | g to site
 type bigmol = 5 tm to mol | rs to rsite
 
 static E about mol
-static S about rsite
+static S about site
 static R about rsite
 dynamic Active about mol
 dynamic Open about site
@@ -159,7 +159,7 @@ let f h x y = (h x) && (e y)
 There is a few things to note:
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
-\item All free variables of right hand-side must be bound on the left hand-size, with some exceptions (see Section \ref{subsec:guardinfer}).
+\item All free variables of right hand-side must be in the left hand-side, with some exceptions (see Section \ref{subsec:guardinfer}).
 \item The language is \emph{high-order}, meaning that one definition can take another definition as an argument.
 \end{itemize}
 
@@ -208,9 +208,9 @@ Programs are typechecked (using algorithm W) to ensure the validity of the file.
 As mentioned before, the use of the \ocaml{Link} predicate can be constrained. Defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
 \begin{itemize}
 \item $None$ means that a node of this type can be linked to any node of any other type.
-\item $Some\ xs$ means that a node of this type can only be linked to node that have types in $xs$.
+\item $Some\ xs$ means that a node of this type can only be linked to node that have its type in $xs$.
 \end{itemize}
-When typing with algorithm W, each definition carries a map of type $typevariable \to (typevariable, type)\ either$ registering which variable is linked to which type. Then, when discovering the ground type corresponding to a type variable, we can ensure that constraints are respected.
+When typing with algorithm W, each definition carries a map of type $typevariable \to (typevariable, type)\ either$ registering which variable is linked to which type. Then, when discovering the ground type (a type without an arrow that is not a variable) corresponding to a type variable, we can ensure that constraints are respected.
 
 For example (using the configuration given in Section \ref{configex}):
 \begin{minted}[frame=lines]{ocaml}
