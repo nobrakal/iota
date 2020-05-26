@@ -205,7 +205,8 @@ The described syntax is parsed using the great \Menhir{}\cite{menhir}.
 Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.\\
 
 \subsubsection{About constraints}
-As mentioned before, the use of the \ocaml{Link} predicate can be constrained. Defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
+As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typecheck, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
+In details, defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
 \begin{itemize}
 \item $None$ means that a node of this type can be linked to any node of any other type.
 \item $Some\ xs$ means that a node of this type can only be linked to node that have its type in $xs$.
@@ -272,7 +273,7 @@ Next, the typing of the main part gives:
   }
 \end{figure}
 
-Note that the line about the type variable $\alpha$ in tabular $(c)$ was dropped since we identified that $\alpha$ was instantiated here to $site$ \emph{and this specialization was legal regarding the configuration and the link map}.
+Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped since we identified that $\alpha$ was instantiated here to $site$ \emph{and this specialization was legal regarding the configuration and the link map}.
 
 We can then instantiated $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
