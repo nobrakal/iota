@@ -29,13 +29,19 @@
 \tableofcontents
 
 \section{Introduction}
-\Iota{} is a programming language targeting the logic developed in Husson's thesis \cite{husson}. More specifically, it targets a ``safe'' subset of Husson's logic (section 5), for which we know an algorithm able to synthesize equivalent \Kappa{} rules.
+
+One possibility to model proteins interactions is with a graph, were a node is seen as a protein and an edge as an interaction between them. \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good target for compiling knowledge representation formalisms.
+
+A. Husson worked in his thesis\cite{husson} to provide a logical framework that is expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. We will focus more specifically on a ``safe'' subset of Husson's logic, for which we know an algorithm able to synthesize equivalent \Kappa{} rules.
 
 Sadly, it is tedious to write directly formulas in this logic, and criterion of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set.
 
 Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
 
 \Iota{} is an experiment trying to address these difficulties: the compiler comes with a powerful type system, several static analysis and optimizations. The language also provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
+
+\subsection{Biological modeling}
+%TODO intro husson
 
 \section{Semantics of the configuration file}
 A \Iota{} program needs to be configured. For this purpose, the user needs to provide a configuration file separated in three parts:
@@ -165,9 +171,20 @@ let f h x y = (h x) && (e y)
 There is a few things to note:
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
-\item All free variables of right hand-side must be in the left hand-side, with some exceptions (see Section \ref{subsec:guardinfer}).
+\item All free variables of right hand-side must be in the left hand-side, with some exceptions (see below).
 \item The language is \emph{high-order}, meaning that one definition can take another definition as an argument.
 \end{itemize}
+
+\subsubsection{A relaxed rule for free variables}
+\label{subsec:guardinfer}
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some heuristics are used and one can write a definition such as:
+\begin{minted}{ocaml}
+let f x = Eq(x,z) && Link(x,z)
+\end{minted}
+which will be compiled to:
+\begin{minted}{ocaml}
+let f x = exists z Eq(x,z) && Link(x,z)
+\end{minted}
 
 \subsection{General parts}
 A program is optionally followed by two lists:
@@ -208,7 +225,10 @@ The compilation is divided into 5 steps:
 The described syntax is parsed using the great \Menhir{}\cite{menhir}. A first pass is made after the parsing itself to ensure that the user uses the symbol \ocaml{+} only in front of declared dynamic predicates.
 
 \subsection{Typechecking}
-Programs are typechecked (using algorithm W) to ensure the validity of the file. Most of the inference is trivial. There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root). This is bypassed using explicit typing of this operator.\\
+To ensure the validity of programs, they are typechecked in a Hindley-Milner system\cite{hindley} using a modified algorithm W\cite{milner}.
+This standard choice allows to have a well-studied and powerful type system with an efficient algorithm. Moreover, since the \Iota{} syntax is very strict, most of the inference is trivial.
+
+There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root) which is hard to check. This is bypassed using explicit typing of this operator.
 
 \subsubsection{About constraints}
 As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typecheck, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
@@ -283,6 +303,11 @@ Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped
 
 We can then instantiated $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
+\subsubsection{Handling free variables}
+Unusually, the typechecking actually transform the inputed program. Indeed, free variables are treated specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference will be difficult at this stage of the compilation. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
+
+Since all definitions will also be inlined later, we rename unbounded free variable with free names to ensure that there will be no name capture.
+
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
 
@@ -291,41 +316,30 @@ All the definitions of \Iota{} are \emph{pure}, ie. without any effects, so one 
 
 \begin{itemize}
 \item Unused definitions are not included in the result of the compilation. They still need to typecheck.
-\item The size of the produced formula can be large since many things will be duplicated.
+\item The size of the produced formula can be large since many expressions will be duplicated.
 \end{itemize}
 
 \paragraph{Compilation of TLink}
 \label{para:tlink}
-The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it to a big disjunction of cases. Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
+The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
+Saying that two trees are linked is equivalent to say that there is a node in the first tree linked to another node in the other tree. Hence the compilation is made by a disjunction of a all the possible couples.
+Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
 
 \paragraph{Optimization}
-The compiler can now do some optimization. It actually does only one, by replacing expressions of the form:
-\begin{minted}{ocaml}
-parent<t1,t2>(x.f)
-\end{minted}
-by
-\begin{minted}{ocaml}
-x
-\end{minted}
+The compiler can do some optimization. It actually does only one, by replacing expressions of the form
+\ocaml{parent<t1,t2>(x.f)} by \ocaml{x}.
+
 Note that this optimization is legal in the sense that, since the program typechecks, we know that \ocaml{x.f} is a valid object.
 
 \subsection{Guard inference}
-\label{subsec:guardinfer}
-When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some heuristics are used and one can write a definition such as:
-\begin{minted}{ocaml}
-let f x = Eq(x,z) && Link(x,z)
-\end{minted}
-which will be compiled to:
-\begin{minted}{ocaml}
-let f x = exists z Eq(x,z) && Link(x,z)
-\end{minted}
+TODO describe algorithm
 
 \paragraph{Normal form of formulas}
 Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done here. Note that it was not possible to do it before, since we need to first infer guards to be able to negate them properly.
 
 \subsection{Verification}
 \label{subsec:verification}
-The resulting structure must satisfy some properties. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed. This pass only checks if these properties are respected.
+The resulting structure must satisfy some properties. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion. This pass only checks if these properties are respected.
 
 \section{About the compiler}
 \subsection{Compiling}
