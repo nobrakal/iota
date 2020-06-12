@@ -6,6 +6,7 @@
 \usepackage{subfig}
 \usepackage{multicol}
 \usepackage{amsmath}
+\usepackage{semantic}
 
 \newcommand\Iota{\textsc{Iota}}
 \newcommand\Menhir{\textsc{Menhir}}
@@ -342,7 +343,21 @@ Note that this optimization is legal in the sense that, since the program typech
 
 \subsection{Guard inference}
 \label{subsec:guardinfer}
-TODO describe algorithm
+We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
+We write $X,term \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in $term$ and for each $g\in G$, the second variable is not in the forbidden set $X$.
+
+\[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Link(y,z) \vdash_x \{ Link(y,z) \}}  \quad \inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, TLink(y,z) \vdash_x \{ TLink(y,z)\}}\]
+\[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Eq(y,z) \vdash_x \{ Eq(y,z) \}}\]
+\[\inference{X,A \vdash_x G }{X, \neg A \vdash_x G}\]
+\[\inference{X,A \vdash_x G }{X, A\land B \vdash_x G} \quad \inference{X,B \vdash_x G }{X, A\land B \vdash_x G}\]
+\[\inference{X,A \vdash_x G_1  \quad X,B \vdash_x G_2}
+  {X, A\lor B \vdash_x G_1 \cup G_2}\]
+\[\inference{X\cup \{y\},A \vdash_x G }{X, \forall y A \vdash_x G} \quad
+\inference{X\cup \{y\},A \vdash_x G }{X, \exists y A \vdash_x G}\]
+
+The set of forbidden variables is used to ensure that $x$ is guarded only by variables bound before the apparition of $x$.
+
+%TODO guard inference
 
 \paragraph{Normal form of formulas}
 Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done here. Note that it was not possible to do it before, since we need to first infer guards to be able to negate them properly.
