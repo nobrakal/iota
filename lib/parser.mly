@@ -34,7 +34,7 @@
 %token TYPE GUARD TO
 
 (* Config tokens *)
-%token MAXPROF STATIC DYNAMIC ABOUT
+%token MAXDEPTH STATIC DYNAMIC ABOUT
 
 (* Typed tokens *)
 %token<string> LowerId UpperId
@@ -132,7 +132,7 @@ let mk_formula(atom) :=
 
 (* Configuration *)
 config:
-| maxprof=econfig(MAXPROF,Int) types = list(type_elem) predicates=list(predicate) links=list(link) EOF
+| maxdepth=econfig(MAXDEPTH,Int) types = list(type_elem) predicates=list(predicate) links=list(link) EOF
  {
    let predicates = Utils.stringmap_of_list predicates in
    let types = Utils.stringmap_of_list types in
@@ -140,7 +140,7 @@ config:
      List.map
        (fun (x,xs) -> x,List.fold_left (fun acc x -> StringSet.add x acc) StringSet.empty xs) links in
    let links = Utils.stringmap_of_list links in
-   {maxprof;predicates;types;links}
+   {maxdepth;predicates;types;links}
  }
 
 let econfig(keyword,value) :=

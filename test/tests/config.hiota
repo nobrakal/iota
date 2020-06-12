@@ -1,4 +1,4 @@
-let maxprof = 2
+let maxdepth = 2
 
 type site
 type rsite

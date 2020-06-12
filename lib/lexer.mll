@@ -36,7 +36,7 @@ rule token = parse
   | "forall" { FORALL }
   | "exists" { EXISTS }
 
-  | "maxprof" { MAXPROF }
+  | "maxdepth" { MAXDEPTH }
   | "static"  { STATIC }
   | "dynamic" { DYNAMIC }
   | "about"   { ABOUT }

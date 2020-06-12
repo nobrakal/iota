@@ -52,7 +52,7 @@ A \Iota{} program needs to be configured. For this purpose, the user needs to pr
 \end{enumerate}
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
-\subsection{The maxprof parameter}
+\subsection{The maxdepth parameter}
 All trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
@@ -87,7 +87,7 @@ The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, a
 \subsection{Example}
 Here is a valid configuration file:
 \begin{minted}[frame=lines]{ocaml}
-let maxprof = 10
+let maxdepth = 10
 
 type site
 type rsite
@@ -102,6 +102,7 @@ dynamic Open about site
 
 Link rsite to site
 \end{minted}
+The maximum depth is at 10, meaning that all considered trees will only have branches with less than 10 nodes.
 
 This file declares four types:
 
@@ -379,7 +380,7 @@ Comments à-la-OCaml can be used everywhere.
 \label{subsec:syntaxconfig} Here is a BNF syntax for the configuration file.
 \begin{grammar}
   <constants> ::=
-  \lit{let} \lit{maxprof} \lit{=} <int>
+  \lit{let} \lit{maxdepth} \lit{=} <int>
 
   <accessor> ::=
   <lident> \lit{to} <type>

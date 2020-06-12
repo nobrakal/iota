@@ -138,7 +138,7 @@ let fold_paths ~config fold link x y =
     then Some (link x y)
     else None in
   let paths x =
-    iter_bind config.maxprof [x]
+    iter_bind config.maxdepth [x]
       (fun (x,xt) ->
         match Utils.StringMap.find_opt xt config.types with
         | Some xs -> List.(concat (map (extract_possible_child x) xs))
