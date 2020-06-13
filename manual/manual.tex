@@ -7,6 +7,7 @@
 \usepackage{multicol}
 \usepackage{amsmath}
 \usepackage{semantic}
+\usepackage{stmaryrd}
 
 \newcommand\Iota{\textsc{Iota}}
 \newcommand\Menhir{\textsc{Menhir}}
@@ -343,8 +344,10 @@ Note that this optimization is legal in the sense that, since the program typech
 
 \subsection{Guard inference}
 \label{subsec:guardinfer}
+
+\paragraph{The guard inference algorithm}
 We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
-We write $X,term \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in $term$ and for each $g\in G$, the second variable is not in the forbidden set $X$.
+We write $X,\tau \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in $\tau$ and for each $g\in G$, the second variable is not in the forbidden set $X$.
 
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Link(y,z) \vdash_x \{ Link(y,z) \}}  \quad \inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, TLink(y,z) \vdash_x \{ TLink(y,z)\}}\]
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Eq(y,z) \vdash_x \{ Eq(y,z) \}}\]
@@ -357,10 +360,12 @@ We write $X,term \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in
 
 The set of forbidden variables is used to ensure that $x$ is guarded only by variables bound before the apparition of $x$.
 
-%TODO guard inference
+\paragraph{How to use it}
+When encountering an expression $\tau$ with free variables $x_1,...,x_n$, the compiler generates all possible permutations of $\llbracket 1,n \rrbracket$, and tries to find a permutation that can be used to find guards for every variable.\\
+More precisely, for each permutation $\pi$, it runs the mentioned algorithm for each $x_i$ with a starting set of forbiden variables $X_i = \{x_{\pi(j)} | i<j\le n\}$. Indeed, the permutation will give the order of quantification, and we only want guards for a said variable $x$ with variables bounded \emph{before} $x$.
 
 \paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. This is done here. Note that it was not possible to do it before, since we need to first infer guards to be able to negate them properly.
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. We are benefiting of this pass that is changing the shape of the formula (by removing unbounded quantification to put each formula in normal form .
 
 \subsection{Verification}
 \label{subsec:verification}
