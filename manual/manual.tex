@@ -33,9 +33,9 @@
 
 \section{Introduction}
 
-One possibility to model proteins interactions is with a graph, were a node is seen as a protein and an edge as an interaction between them. \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good target for compiling knowledge representation formalisms.
+One possibility to model proteins interactions is with a graph, were a node is seen as a protein and an edge as an interaction between proteins. \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good target for compiling knowledge representation formalisms.
 
-A. Husson worked in his thesis\cite{husson} to provide a logical framework that is expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. We will focus more specifically on a ``safe'' subset of Husson's logic, for which we know an algorithm able to synthesize equivalent \Kappa{} rules.
+A. Husson worked in his thesis\cite{husson} to provide a logical framework that is expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. A. Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules.
 
 Sadly, it is tedious to write directly formulas in this logic, and criterion of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set.
 
@@ -82,7 +82,7 @@ Predicates can be used to extract information about nodes and leaves. Some predi
 The user can specify other predicates using the configuration file. Note that user-defined predicates are \emph{typed}, meaning that, once defined, they can be applied only to one type of literal.
 
 \paragraph{Static vs Dynamic}
-Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+} in the language. \ocaml{Eq}, \ocaml{Link} and \ocaml{Has} are dynamic.
+Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+} in the language. \ocaml{Eq}, \ocaml{Link}, \ocaml{TLink} and \ocaml{Has} are dynamic.
 
 \subsection{Constraints}
 The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, and force some types to be linked only to some others.
@@ -162,7 +162,7 @@ Then, one can construct first-order formulas using the two following structures:
 \item \ocaml{exists x guards(x,y) && formula(x)}
 \end{itemize}
 Note that each quantified variable is \emph{guarded} by a (disjunctive) non-empty list of guards.\\
-This syntax and requirement are directly inspired by A. Husson's ``safe'' fragment. The only difference is that he designed it with only one guard for each variable. Thankfully, the two are equivalent since we have the following logical equivalences, for each predicate $A$, $B$ and $C$ over the variable $x$:
+This syntax and requirement are directly inspired by A. Husson's ``safe'' fragment. The only difference is that the original logic was designed with only one guard for each variable. Thankfully, the two are equivalent since for each predicate $A$, $B$ and $C$ over the variable $x$, we have the following logical equivalences:
 
 \begin{align*}
   (\forall x, (A x \lor B x) \implies C x) &\iff (\forall x, A x \implies C x) \land (\forall x, B x \implies C x)\\
@@ -234,6 +234,8 @@ The compilation is divided into 5 steps:
 
 \subsection{Parsing}
 The described syntax is parsed using the great \Menhir{}\cite{menhir}. A first pass is made after the parsing itself to ensure that the user uses the symbol \ocaml{+} only in front of declared dynamic predicates.
+
+Concerning the syntax itself, an interesting feature is that Husson's language is strictly included in \Iota{}. This means that the target language of our compiler is a strict subset of its source language. Hence, efforts were made to make the compiler \emph{reentrant}, meaning that if a program $P$ compiles to a program $P'$, then $P'$ compiles (exactly) to itself.
 
 \subsection{Typechecking}
 To ensure the validity of programs, they are typechecked in a Hindley-Milner system\cite{hindley} using a modified algorithm W\cite{milner}.
@@ -365,11 +367,11 @@ When encountering an expression $\tau$ with free variables $x_1,...,x_n$, the co
 More precisely, for each permutation $\pi$, it runs the mentioned algorithm for each $x_i$ with a starting set of forbiden variables $X_i = \{x_{\pi(j)} | i<j\le n\}$. Indeed, the permutation will give the order of quantification, and we only want guards for a said variable $x$ with variables bounded \emph{before} $x$.
 
 \paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. We are benefiting of this pass that is changing the shape of the formula (by removing unbounded quantification to put each formula in normal form .
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. We are benefiting of this pass to put each formula in normal form.
 
 \subsection{Verification}
 \label{subsec:verification}
-The resulting structure must satisfy some properties. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion. This pass only checks if these properties are respected.
+The resulting structure must satisfy some properties that are not syntaxic. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion. This pass only checks if these properties are respected.
 
 \section{About the compiler}
 \subsection{Compiling}
@@ -395,6 +397,12 @@ dune runtest
 For now, it ensures that files that must compile are indeed compiling, and files that must fail to compile are indeed failing.
 
 \section{Conclusion}
+\Iota{} is a tiny but powerful language which make a step after Husson's one toward an accessible language for molecular biologist. It addresses a good number of practical issue with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
+
+Contrary to approaches like LittleB \cite{littleb} which is plain LISP, the smallness of \Iota{} is its strength: it is very simple to analyse it and compiling it to the languages.
+
+The compiler can still be improved in several ways.
+
 
 \section{Syntax of the language}
 Nota Bene:
