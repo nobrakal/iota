@@ -33,18 +33,37 @@
 
 \section{Introduction}
 
-One possibility to model proteins interactions is with a graph, were a node is seen as a protein and an edge as an interaction between proteins. \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good target for compiling knowledge representation formalisms.
+\paragraph{Molecular Biology}
+Molecular biology mainly studies protein-protein interactions. Such interactions are complex to understand, but even the knowledge about it is hard to represent. Here is an example borrowed from Husson's\cite{husson} thesis of a typical sentence from a molecular biology paper:
 
-A. Husson worked in his thesis\cite{husson} to provide a logical framework that is expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. A. Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules.
+\begin{quote}
+  The activation of Raf-1 by activated Src requires phosphorylation of Raf-1 on Y340 and/or
+  Y341 [...]. Tyrosine phosphorylation and activation of Raf-1 have been shown to be co-
+  incident. However, others have been unable to detect phosphotyrosine in active Raf-1.\cite{masson}
+\end{quote}
 
-Sadly, it is tedious to write directly formulas in this logic, and criterion of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set.
+The use of a semi-formal English makes it hard for this knowledge to be analysed and shared.
+Moreover, the field of molecular biology is seeing an explosion of activity. There is so much data that human capabilities are outmatched. Taking Krivine's example\cite{siglog}, there was more than 500 paper published on the rather specific subject of ``Mitogen Activated Protein Kinases'' in the single year of 2008.\\
 
-Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
+The combination of a high amount of data with a poor representation has led to the need and development of formal methods in biology\cite{fontana}. One possibility to model proteins interactions is to use \emph{rules} to directly describe the evolution of a system. The next step is to see a \emph{mixture}, a group of proteins interacting with each others as a graph: a node correspond to a protein and an edge to an interaction between proteins. Finally, the evolution of a mixture can simply be described as a set of graph rewriting rules.
 
-\Iota{} is an experiment trying to address these difficulties: the compiler comes with a powerful type system, several static analysis and optimizations. The language also provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
+\Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good basis for a formalism of molecular biology knowledge.
 
-\subsection{Biological modeling}
-%TODO intro husson
+\paragraph{Toward a fisrot-order logic}
+
+ Sadly, two problems arise when working with rule-bases models:
+\begin{itemize}
+\item Systems quickly become too large to be understood.
+\item Adding a new knowledge to an existing set of rule is hard, since it will often require to change existing rules.
+\end{itemize}
+
+Husson worked in his thesis\cite{husson} to provide a logical framework that address these
+issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules.\\
+
+Unfortunately, it is tedious to write directly formulas in this logic, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
+
+\Iota{} is an experiment trying to address these difficulties: it offers a well-described language with a strong type system that can be compiled to Husson's fragment. The compiler also comes with several several static analysis and optimizations. Finally, \Iota{} provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
+
 
 \section{Semantics of the configuration file}
 A \Iota{} program needs to be configured. For this purpose, the user needs to provide a configuration file separated in three parts:
@@ -162,7 +181,7 @@ Then, one can construct first-order formulas using the two following structures:
 \item \ocaml{exists x guards(x,y) && formula(x)}
 \end{itemize}
 Note that each quantified variable is \emph{guarded} by a (disjunctive) non-empty list of guards.\\
-This syntax and requirement are directly inspired by A. Husson's ``safe'' fragment. The only difference is that the original logic was designed with only one guard for each variable. Thankfully, the two are equivalent since for each predicate $A$, $B$ and $C$ over the variable $x$, we have the following logical equivalences:
+This syntax and requirement are directly inspired by Husson's ``safe'' fragment. The only difference is that the original logic was designed with only one guard for each variable. Thankfully, the two are equivalent since for each predicate $A$, $B$ and $C$ over the variable $x$, we have the following logical equivalences:
 
 \begin{align*}
   (\forall x, (A x \lor B x) \implies C x) &\iff (\forall x, A x \implies C x) \land (\forall x, B x \implies C x)\\
@@ -347,13 +366,15 @@ Note that this optimization is legal in the sense that, since the program typech
 \subsection{Guard inference}
 \label{subsec:guardinfer}
 
+\paragraph{Normal form of formulas}
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First of all, we put each formula into normal form, to simplify the guard inference.
+
 \paragraph{The guard inference algorithm}
 We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
 We write $X,\tau \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in $\tau$ and for each $g\in G$, the second variable is not in the forbidden set $X$.
 
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Link(y,z) \vdash_x \{ Link(y,z) \}}  \quad \inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, TLink(y,z) \vdash_x \{ TLink(y,z)\}}\]
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Eq(y,z) \vdash_x \{ Eq(y,z) \}}\]
-\[\inference{X,A \vdash_x G }{X, \neg A \vdash_x G}\]
 \[\inference{X,A \vdash_x G }{X, A\land B \vdash_x G} \quad \inference{X,B \vdash_x G }{X, A\land B \vdash_x G}\]
 \[\inference{X,A \vdash_x G_1  \quad X,B \vdash_x G_2}
   {X, A\lor B \vdash_x G_1 \cup G_2}\]
@@ -365,9 +386,6 @@ The set of forbidden variables is used to ensure that $x$ is guarded only by var
 \paragraph{How to use it}
 When encountering an expression $\tau$ with free variables $x_1,...,x_n$, the compiler generates all possible permutations of $\llbracket 1,n \rrbracket$, and tries to find a permutation that can be used to find guards for every variable.\\
 More precisely, for each permutation $\pi$, it runs the mentioned algorithm for each $x_i$ with a starting set of forbiden variables $X_i = \{x_{\pi(j)} | i<j\le n\}$. Indeed, the permutation will give the order of quantification, and we only want guards for a said variable $x$ with variables bounded \emph{before} $x$.
-
-\paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. We are benefiting of this pass to put each formula in normal form.
 
 \subsection{Verification}
 \label{subsec:verification}
@@ -399,15 +417,14 @@ For now, it ensures that files that must compile are indeed compiling, and files
 \section{Conclusion}
 \Iota{} is a tiny but powerful language which make a step after Husson's one toward an accessible language for molecular biologist. It addresses a good number of practical issue with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
 
-Contrary to approaches like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small lanquage. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.
+Contrary to approaches like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small language. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.
 
 The compiler can still be improved in several ways:
 \begin{itemize}
-\item We think that heuristics can be made to generate formulas that will behave well with the compilation to actual \Kappa{} rules.
+\item We think that heuristics can be made to generate formulas that will behave well with the compilation of the logic to actual \Kappa{} rules.
 \item One might want to add explicit typing to the syntax of \Iota{}. For now, there is no simple way to force the type of a variable other than defining a dedicated predicate for each type. Adding a syntax for explicit typing is only a mechanical work.
 \item Explicit typing was required when using the \ocaml{parent} operator. Maybe there is a way to relax this requirement (for example, when there is only one possible parent for this type) and let the inference engine do the work.
 \end{itemize}
-
 
 \section{Syntax of the language}
 Nota Bene:
