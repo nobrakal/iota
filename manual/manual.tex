@@ -5,7 +5,7 @@
 \usepackage{hyperref}
 \usepackage{subfig}
 \usepackage{multicol}
-\usepackage{amsmath}
+\usepackage{amsmath,amsfonts,amssymb}
 \usepackage{semantic}
 \usepackage{stmaryrd}
 
@@ -33,7 +33,7 @@
 
 \section{Introduction}
 
-\paragraph{Molecular Biology}
+\subsection{Molecular biology}
 Molecular biology mainly studies protein-protein interactions. Such interactions are complex to understand, but even the knowledge about it is hard to represent. Here is an example borrowed from Husson's\cite{husson} thesis of a typical sentence from a molecular biology paper:
 
 \begin{quote}
@@ -49,18 +49,30 @@ The combination of a high amount of data with a poor representation has led to t
 
 \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good basis for a formalism of molecular biology knowledge.
 
-\paragraph{Toward a fisrot-order logic}
-
+\subsection{Toward a first-order logic}
  Sadly, two problems arise when working with rule-bases models:
 \begin{itemize}
 \item Systems quickly become too large to be understood.
 \item Adding a new knowledge to an existing set of rule is hard, since it will often require to change existing rules.
 \end{itemize}
 
-Husson worked in his thesis\cite{husson} to provide a logical framework that address these
-issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules.\\
+Husson worked in his thesis\cite{husson} to provide a logical framework that addresses these
+issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules.
 
-Unfortunately, it is tedious to write directly formulas in this logic, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
+\\
+Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules. The syntax of this subset is the following\cite{husson}:
+\label{hussonsyntax}
+
+$$ \theta_1,... ,\theta_k \text{ ensure } I_1,...,I_k \text{ maintain } I_{k+1},...,I_{k'} $$
+where:
+$$ \theta ::= L | \forall x\ \alpha(x,y) \Rightarrow \theta | \exists x\ \alpha(x,y) \land \theta | \theta \land \theta | \theta \lor \theta \quad \quad \forall L \in \text{Lit},x,y,\alpha \in \text{Guard}$$
+
+The ``independent'' and ``maintain'' parts are optional and made of formulas of the following form:
+$$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow \theta $$
+where $Vars(\theta) \subseteq \{x,y_1,..,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.
+
+\subsection{A "logical" programming language}
+Unfortunately, it is tedious to write directly formulas in this subset, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
 
 \Iota{} is an experiment trying to address these difficulties: it offers a well-described language with a strong type system that can be compiled to Husson's fragment. The compiler also comes with several several static analysis and optimizations. Finally, \Iota{} provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
 
@@ -165,6 +177,9 @@ Formulas are about literals. A \Iota{} literal is either:
 
 \paragraph{Formulas}
 Propositional formulas can be built over (fully applied) predicates on literals using usual combiners: \ocaml{not}, \ocaml{&&} and \ocaml{||}.
+
+\paragraph{About the negation}
+Husson's original syntax didn't included the negation (see Section \ref{hussonsyntax}). Fortunately, it can be added since every formula can be put in normal form (where the negation is only present on predicates) \emph{while} still being in Husson's fragment.
 
 \paragraph{Examples}
 Here are some examples of formulas using the previous configuration:
