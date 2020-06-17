@@ -38,14 +38,14 @@ Molecular biology mainly studies protein-protein interactions. Such interactions
 
 \begin{quote}
   The activation of Raf-1 by activated Src requires phosphorylation of Raf-1 on Y340 and/or
-  Y341 [...]. Tyrosine phosphorylation and activation of Raf-1 have been shown to be co-
-  incident. However, others have been unable to detect phosphotyrosine in active Raf-1.\cite{masson}
+  Y341 [...]. Tyrosine phosphorylation and activation of Raf-1 have been shown to be co-incident.
+  However, others have been unable to detect phosphotyrosine in active Raf-1.\cite{masson}
 \end{quote}
 
 The use of a semi-formal English makes it hard for this knowledge to be analysed and shared.
-Moreover, the field of molecular biology is seeing an explosion of activity. There is so much data that human capabilities are outmatched. Taking Krivine's example\cite{siglog}, there was more than 500 paper published on the rather specific subject of ``Mitogen Activated Protein Kinases'' in the single year of 2008.\\
+Moreover, the field of molecular biology is seeing an explosion of activity: there is so much data that human capabilities are outmatched. Taking Krivine's example\cite{siglog}, there was more than 500 paper published on the rather specific subject of ``Mitogen Activated Protein Kinases'' in the single year of 2008.\\
 
-The combination of a high amount of data with a poor representation has led to the need and development of formal methods in biology\cite{fontana}. One possibility to model proteins interactions is to use \emph{rules} to directly describe the evolution of a system. The next step is to see a \emph{mixture}, a group of proteins interacting with each others as a graph: a node correspond to a protein and an edge to an interaction between proteins. Finally, the evolution of a mixture can simply be described as a set of graph rewriting rules.
+The combination of a high amount of data with a poor representation has led to the need and development of formal methods in Biology\cite{fontana}. One possibility to model proteins interactions is to use \emph{rules} to directly describe the evolution of a system. The next step is to see a \emph{mixture}, a group of proteins interacting with each others, as a graph: a node correspond to a protein with sites that can be linked and an edge to an interaction between sites of proteins. Finally, the evolution of a mixture can simply be described as a set of graph rewriting rules.
 
 \Kappa{}\cite{kappa} is a graph rewriting language designed for this approach. It comes with an efficient simulator, which makes it a good basis for a formalism of molecular biology knowledge.
 
@@ -57,9 +57,17 @@ The combination of a high amount of data with a poor representation has led to t
 \end{itemize}
 
 Husson worked in his thesis\cite{husson} to provide a logical framework that addresses these
-issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules.
+issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. His logic is a kind of a first-order logic extended with a $\star$ symbol that can be applied to predicates. A stared predicate gives information about the \emph{next} state of the mixture, while an un-stared symbol gives information about the actual state of the mixture.\\
 
-\\
+In this logic for example, one can say ``The site s of the protein x turns ON'' with the following formula:
+$$ OFF(x.s) \land ON^\star(x.s) $$
+This formula uses two predicates $OFF$ and $ON$. Notice the $\star$ symbol after the $ON$ predicate meaning that $x$ will be $ON$ in the \emph{next} mixture, while we require it to be $OFF$ in the actual mixture.\\
+
+Moreover, Husson's logic is a first-order logic, meaning that one can quantifies over proteins. For example, to say that ``A kinase site s can only turn ON when its site t is linked to another protein'', one can write to following formula:
+$$ \forall x\ (K(x) \land OFF(x.s) \land ON^\star(x.s)) \implies \exists y\ Link(x.t,y) $$
+It means that for all $x$, if $x$ is a kinase (assertion verified by the predicate $K$), is actually OFF and will become ON in the next state, then it exists a protein $y$ such that the site $t$ of $x$ is linked to $y$.
+
+\subsection{A safe subset}
 Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules. The syntax of this subset is the following\cite{husson}:
 \label{hussonsyntax}
 
@@ -67,15 +75,17 @@ $$ \theta_1,... ,\theta_k \text{ ensure } I_1,...,I_k \text{ maintain } I_{k+1},
 where:
 $$ \theta ::= L | \forall x\ \alpha(x,y) \Rightarrow \theta | \exists x\ \alpha(x,y) \land \theta | \theta \land \theta | \theta \lor \theta \quad \quad \forall L \in \text{Lit},x,y,\alpha \in \text{Guard}$$
 
+A guard is a binary predicate involving exactly its two arguments. Note that, since every quantified variable is guarded, this fragment is strictly less expressive than the full logic.
+
 The ``independent'' and ``maintain'' parts are optional and made of formulas of the following form:
 $$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow \theta $$
-where $Vars(\theta) \subseteq \{x,y_1,..,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.
+\label{criterion}
+where $Vars(\theta) \subseteq \{x,y_1,...,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.
 
 \subsection{A "logical" programming language}
 Unfortunately, it is tedious to write directly formulas in this subset, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
 
 \Iota{} is an experiment trying to address these difficulties: it offers a well-described language with a strong type system that can be compiled to Husson's fragment. The compiler also comes with several several static analysis and optimizations. Finally, \Iota{} provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
-
 
 \section{Semantics of the configuration file}
 A \Iota{} program needs to be configured. For this purpose, the user needs to provide a configuration file separated in three parts:
@@ -87,12 +97,13 @@ A \Iota{} program needs to be configured. For this purpose, the user needs to pr
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \subsection{The maxdepth parameter}
-All trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
+\Iota{} allows the programmer to describe (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
-Nodes, leaves and some operations on trees are \emph{typed}. These types are all defined in the configuration file, and are grouped in two families:
+When its come to programming, a significant tool is \emph{type}. \Iota{} use them extensively to ensure that formulas are well formed and to perform several optimizations.
+Nodes, leaves and some operations on trees are thus \emph{typed}. These types are all defined in the configuration file, and are grouped in two families:
 \begin{itemize}
-\item Types without accessors; they will represent leaves.
+\item Types without accessors; they will represent leaves (which corresponds to sites for proteins).
 \item Types with accessors; they will represent nodes. An accessor indicates the type of children and how to access it. There is two type of accessors:
   \begin{itemize}
   \item A simple accessor composed by a name and a type.
@@ -116,7 +127,7 @@ The user can specify other predicates using the configuration file. Note that us
 Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+} in the language. \ocaml{Eq}, \ocaml{Link}, \ocaml{TLink} and \ocaml{Has} are dynamic.
 
 \subsection{Constraints}
-The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, and force some types to be linked only to some others.
+The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, and force some types to be linked only to some others. This is very useful to force a protein to be linked only to some other kind of protein.
 
 \subsection{Example}
 Here is a valid configuration file:
@@ -196,7 +207,7 @@ Then, one can construct first-order formulas using the two following structures:
 \item \ocaml{exists x guards(x,y) && formula(x)}
 \end{itemize}
 Note that each quantified variable is \emph{guarded} by a (disjunctive) non-empty list of guards.\\
-This syntax and requirement are directly inspired by Husson's ``safe'' fragment. The only difference is that the original logic was designed with only one guard for each variable. Thankfully, the two are equivalent since for each predicate $A$, $B$ and $C$ over the variable $x$, we have the following logical equivalences:
+This syntax and requirement are directly inspired by Husson's ``safe'' fragment. The only difference is that the original syntax was designed with only one guard for each variable. Thankfully, the two are equivalent since for each predicate $A$, $B$ and $C$ over the variable $x$, we have the following logical equivalences:
 
 \begin{align*}
   (\forall x, (A x \lor B x) \implies C x) &\iff (\forall x, A x \implies C x) \land (\forall x, B x \implies C x)\\
@@ -222,7 +233,7 @@ There is a few things to note:
 \end{itemize}
 
 \subsubsection{A relaxed rule for free variables}
-When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded. Thus we need to infer a guard for free variables in let-definitions. Some heuristics are used and one can write a definition such as:
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded; thus we need to infer a guard for free variables in let-definitions. We give an algorithm in Section \ref{subsec:guardinfer} allowing one to write a definition such as:
 \begin{minted}{ocaml}
 let f x = Eq(x,z) && Link(x,z)
 \end{minted}
@@ -263,7 +274,7 @@ The compilation is divided into 5 steps:
 \item Typechecking.
 \item Compilation itself.
 \item Guard inference.
-\item Verification of the resulting structure.
+\item Checking of the resulting structure.
 \end{enumerate}
 
 \subsection{Parsing}
@@ -273,12 +284,13 @@ Concerning the syntax itself, an interesting feature is that Husson's language i
 
 \subsection{Typechecking}
 To ensure the validity of programs, they are typechecked in a Hindley-Milner system\cite{hindley} using a modified algorithm W\cite{milner}.
-This standard choice allows to have a well-studied and powerful type system with an efficient algorithm. Moreover, since the \Iota{} syntax is very strict, most of the inference is trivial.
+This standard choice gives a well-studied and powerful type system with an efficient algorithm. Moreover, since the \Iota{} syntax is very strict, most of the inference is trivial.
 
 There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root) which is hard to check. This is bypassed using explicit typing of this operator.
 
 \subsubsection{About constraints}
 As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typecheck, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
+
 In details, defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
 \begin{itemize}
 \item $None$ means that a node of this type can be linked to any node of any other type.
@@ -346,20 +358,20 @@ Next, the typing of the main part gives:
   }
 \end{figure}
 
-Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped since we identified that $\alpha$ was instantiated here to $site$ \emph{and this specialization was legal regarding the configuration and the link map}.
+Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped since we identified that $\alpha$ was instantiated here to $site$ and \emph{this specialization was legal regarding the configuration and the link map}.
 
-We can then instantiated $\beta$ to any type, since the linkabilty of $site$ is not constrained.
+We can then instantiate $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
 \subsubsection{Handling free variables}
-Unusually, the typechecking actually transform the inputed program. Indeed, free variables are treated specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference will be difficult at this stage of the compilation. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
+Unusually, the typechecking actually transform the inputed program. Indeed, free variables of definitions are handled specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference at this stage of the compilation will be difficult. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
 
-Since all definitions will also be inlined later, we rename unbounded free variable with free names to ensure that there will be no name capture.
+Since all definitions will also be inlined later, we rename unbounded free variable with new names to ensure that there will be no name capture.
 
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
 
 \paragraph{Inlining}
-All the definitions of \Iota{} are \emph{pure}, ie. without any effects, so one can always replace a call to a function by its body with proper substitution. This is the first thing the compiler do, since it allows to totally remove let-definitions. There are two sides effects:
+All the definitions of \Iota{} are \emph{pure}, ie. without any effects, and not recursive, so one can always replace a call to a function by its body with proper substitution. This is the first thing the compiler do, since it allows to totally remove let-definitions. There are two sides effects:
 
 \begin{itemize}
 \item Unused definitions are not included in the result of the compilation. They still need to typecheck.
@@ -369,24 +381,23 @@ All the definitions of \Iota{} are \emph{pure}, ie. without any effects, so one 
 \paragraph{Compilation of TLink}
 \label{para:tlink}
 The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
-Saying that two trees are linked is equivalent to say that there is a node in the first tree linked to another node in the other tree. Hence the compilation is made by a disjunction of a all the possible couples.
+Saying that two trees are linked is equivalent to say that there is a node in the first tree linked to another node in the other tree. Hence the compilation is made by a disjunction of all possible couples.
 Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
 
 \paragraph{Optimization}
 The compiler can do some optimization. It actually does only one, by replacing expressions of the form
 \ocaml{parent<t1,t2>(x.f)} by \ocaml{x}.
-
 Note that this optimization is legal in the sense that, since the program typechecks, we know that \ocaml{x.f} is a valid object.
 
 \subsection{Guard inference}
 \label{subsec:guardinfer}
 
 \paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First of all, we put each formula into normal form, to simplify the guard inference.
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First of all, we put each formula into normal form, to fall back into Husson's syntax and simplify the guard inference.
 
 \paragraph{The guard inference algorithm}
 We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
-We write $X,\tau \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in $\tau$ and for each $g\in G$, the second variable is not in the forbidden set $X$.
+We write $X,\tau \vdash_x G$ if $x$ is guarded in $\tau$ by the disjunction of $g\in G$ and for each $g\in G$, the second variable is not in the forbidden set $X$ nor was quantified in the formula.
 
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Link(y,z) \vdash_x \{ Link(y,z) \}}  \quad \inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, TLink(y,z) \vdash_x \{ TLink(y,z)\}}\]
 \[\inference{(y=x \land z \notin X) \lor (z=x \land y \notin X)}{X, Eq(y,z) \vdash_x \{ Eq(y,z) \}}\]
@@ -396,15 +407,15 @@ We write $X,\tau \vdash_x G$ if $x$ is guarded by the disjunction of $g\in G$ in
 \[\inference{X\cup \{y\},A \vdash_x G }{X, \forall y A \vdash_x G} \quad
 \inference{X\cup \{y\},A \vdash_x G }{X, \exists y A \vdash_x G}\]
 
-The set of forbidden variables is used to ensure that $x$ is guarded only by variables bound before the apparition of $x$.
+The set of forbidden variables is used to ensure that $x$ is guarded only by variables bound before the apparition of $x$ (because for each quantification, we add the quantified variable to the forbidden set).
 
 \paragraph{How to use it}
 When encountering an expression $\tau$ with free variables $x_1,...,x_n$, the compiler generates all possible permutations of $\llbracket 1,n \rrbracket$, and tries to find a permutation that can be used to find guards for every variable.\\
-More precisely, for each permutation $\pi$, it runs the mentioned algorithm for each $x_i$ with a starting set of forbiden variables $X_i = \{x_{\pi(j)} | i<j\le n\}$. Indeed, the permutation will give the order of quantification, and we only want guards for a said variable $x$ with variables bounded \emph{before} $x$.
+More precisely, for each permutation $\pi$, it runs the mentioned algorithm for each $x_i$ with a starting set of forbidden variables $X_i = \{x_{\pi(j)} | i<j\le n\}$. Indeed, the permutation will give the order of quantification, and we only want guards for a said variable $x$ with variables bounded \emph{before} $x$.
 
-\subsection{Verification}
+\subsection{Checking}
 \label{subsec:verification}
-The resulting structure must satisfy some properties that are not syntaxic. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion. This pass only checks if these properties are respected.
+The resulting structure must satisfy some properties that cannot be hard-coded in the syntax. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion (see Section \ref{criterion}). This pass only checks if these properties are respected.
 
 \section{About the compiler}
 \subsection{Compiling}
