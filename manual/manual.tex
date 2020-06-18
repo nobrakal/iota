@@ -57,25 +57,34 @@ The combination of a high amount of data with a poor representation has led to t
 \end{itemize}
 
 Husson worked in his thesis\cite{husson} to provide a logical framework that addresses these
-issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. His logic is a kind of a first-order logic extended with a $\star$ symbol that can be applied to predicates. A stared predicate gives information about the \emph{next} state of the mixture, while an un-stared symbol gives information about the actual state of the mixture.\\
+issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. His logic is a kind of a first-order logic that can be used to give information about the current micture and its next state. This is achieved by a $\star$ symbol that can be applied to predicates. A stared predicate gives information about the \emph{next} state of the mixture, while an un-stared symbol gives information about the actual state of the mixture.\\
 
-In this logic for example, one can say ``The site s of the protein x turns ON'' with the following formula:
+For example in this logic, one can say ``The site s of the protein x turns ON'' with the following formula:
 $$ OFF(x.s) \land ON^\star(x.s) $$
-This formula uses two predicates $OFF$ and $ON$. Notice the $\star$ symbol after the $ON$ predicate meaning that $x$ will be $ON$ in the \emph{next} mixture, while we require it to be $OFF$ in the actual mixture.\\
+This formula uses two predicates $OFF$ and $ON$. Notice the $\star$ symbol after the $ON$ predicate meaning that $x$ will be $ON$ in the \emph{next} mixture, while we require it to be $OFF$ in the actual mixture since OFF is not starred.\\
 
 Moreover, Husson's logic is a first-order logic, meaning that one can quantifies over proteins. For example, to say that ``A kinase site s can only turn ON when its site t is linked to another protein'', one can write to following formula:
 $$ \forall x\ (K(x) \land OFF(x.s) \land ON^\star(x.s)) \implies \exists y\ Link(x.t,y) $$
-It means that for all $x$, if $x$ is a kinase (assertion verified by the predicate $K$), is actually OFF and will become ON in the next state, then it exists a protein $y$ such that the site $t$ of $x$ is linked to $y$.
+It means that for all $x$, if $x$ is a kinase (assertion verified by the predicate $K$), is actually OFF and will become ON in the next state, then it exists a protein $y$ such that the site $t$ of $x$ is linked to $y$.\\
+
+Husson bundled some predicates in his logic, namely:
+\begin{itemize}
+\item $=$, the binary predicate for equality.
+\item $Link$, a binary predicate to express that two sites are linked.
+\item $Has$, a unary predicate to express the presence of a protein in the mixture.
+\end{itemize}
+
+Other \emph{unary} predicates can be added when required. Moreover, the logician can declare predicates as static to forbid the use of the $\star$ operator, or dynamic to allow its use.
 
 \subsection{A safe subset}
-Husson identified a ``safe'' subset of its logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules. The syntax of this subset is the following\cite{husson}:
+Husson identified a ``safe'' subset of his logic for which we know an algorithm able to synthesize equivalent \Kappa{} rules. The syntax of this subset is the following\cite{husson}:
 \label{hussonsyntax}
 
 $$ \theta_1,... ,\theta_k \text{ ensure } I_1,...,I_k \text{ maintain } I_{k+1},...,I_{k'} $$
 where:
 $$ \theta ::= L | \forall x\ \alpha(x,y) \Rightarrow \theta | \exists x\ \alpha(x,y) \land \theta | \theta \land \theta | \theta \lor \theta \quad \quad \forall L \in \text{Lit},x,y,\alpha \in \text{Guard}$$
 
-A guard is a binary predicate involving exactly its two arguments. Note that, since every quantified variable is guarded, this fragment is strictly less expressive than the full logic.
+A guard is a binary predicate involving exactly its two arguments (here, there is only two possible predicates: equality and linkability). Note that since every quantified variable is guarded, this fragment is strictly less expressive than the full logic.
 
 The ``independent'' and ``maintain'' parts are optional and made of formulas of the following form:
 $$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow \theta $$
@@ -83,7 +92,7 @@ $$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow 
 where $Vars(\theta) \subseteq \{x,y_1,...,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.
 
 \subsection{A "logical" programming language}
-Unfortunately, it is tedious to write directly formulas in this subset, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.
+Unfortunately, it is tedious to write directly formulas in this subset, and criterions of correction need to be carefully hand-checked. Moreover, since the previously mentioned algorithm to synthesize \Kappa{} rules is doubly exponential, hand-written formulas can lead to an enormous number of rules, frequently equivalent to a much smaller set. Hence, there was a need for an intermediate language that is still made for experts but allowing the programmer to focus on describing its system rather than dealing with the formalism of the logic.\\
 
 \Iota{} is an experiment trying to address these difficulties: it offers a well-described language with a strong type system that can be compiled to Husson's fragment. The compiler also comes with several several static analysis and optimizations. Finally, \Iota{} provides programming facilities through a powerful inference, and the possibility to extend and constrain the type system.
 
@@ -97,7 +106,7 @@ A \Iota{} program needs to be configured. For this purpose, the user needs to pr
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \subsection{The maxdepth parameter}
-\Iota{} allows the programmer to describe (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
+\Iota{} allows the programmer to describe trees (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
 When its come to programming, a significant tool is \emph{type}. \Iota{} use them extensively to ensure that formulas are well formed and to perform several optimizations.
@@ -117,8 +126,8 @@ Predicates can be used to extract information about nodes and leaves. Some predi
 \begin{itemize}
 \item \ocaml{Eq} is a binary predicate expressing the fact that two literals are equals. It can be applied to literals of any types.
 \item \ocaml{Link} is a binary predicate expressing the fact that two literals are linked. It can be applied to literals of any types, except when its use was restricted in the configuration file.
-\item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees of the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}.
 \item \ocaml{Has} is a unary predicate expressing the \emph{presence} of a literal. It can be applied to literal of any types.
+\item \ocaml{TLink<t1,t2>} is a binary predicate expressing the fact that the two trees of the literals are linked. Its arguments must be of type \ocaml{t1} and \ocaml{t2}. This predicate was not originally bundled in Husson's safe fragment, but can be compiled to it (see Section \ref{para:tlink}).
 \end{itemize}
 
 The user can specify other predicates using the configuration file. Note that user-defined predicates are \emph{typed}, meaning that, once defined, they can be applied only to one type of literal.
@@ -132,7 +141,7 @@ The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, a
 \subsection{Example}
 Here is a valid configuration file:
 \begin{minted}[frame=lines]{ocaml}
-let maxdepth = 10
+let maxdepth = 3
 
 type site
 type rsite
@@ -147,7 +156,7 @@ dynamic Open about site
 
 Link rsite to site
 \end{minted}
-The maximum depth is at 10, meaning that all considered trees will only have branches with less than 10 nodes.\\
+The maximum depth is at 3, meaning that all considered trees will only have branches with less than 3 nodes.\\
 
 This file declares four types:
 
@@ -175,7 +184,6 @@ Once the configuration is written, one can write a program using it. The syntax 
 \end{enumerate}
 
 \subsection{Propositional formulas}
-
 \paragraph{Literals}
 Formulas are about literals. A \Iota{} literal is either:
 \begin{multicols}{2}
@@ -380,9 +388,24 @@ All the definitions of \Iota{} are \emph{pure}, ie. without any effects, and not
 
 \paragraph{Compilation of TLink}
 \label{para:tlink}
-The \ocaml{Tlink} predicate is not included in the target language, so we need to compile it.
+The \ocaml{TLink} predicate is not included in the target language, so we need to compile it.
 Saying that two trees are linked is equivalent to say that there is a node in the first tree linked to another node in the other tree. Hence the compilation is made by a disjunction of all possible couples.
-Note that, thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
+Note that thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
+
+For example, using the following configuration:
+\begin{minted}{ocaml}
+let maxdepth = 2
+type site
+type mol = m to mol | f to site | g to site
+Link site to site
+\end{minted}
+
+The expression \ocaml{TLink<mol,mol>(x,y)} will generate the following disjunction:
+\begin{minted}{ocaml}
+Link(x.m.g,y) || Link(x.m.f,y) || Link(x.g,y) || Link(x.f,y)
+\end{minted}
+
+Note that there is for example no \ocaml{Link(x,y)} since it would violate the constraint that a site can only be linked to another site.
 
 \paragraph{Optimization}
 The compiler can do some optimization. It actually does only one, by replacing expressions of the form
