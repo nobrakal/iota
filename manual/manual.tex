@@ -60,7 +60,7 @@ The combination of a high amount of data with a poor representation has led to t
 \end{itemize}
 
 Husson worked in his thesis\cite{husson} to provide a logical framework that addresses these
-issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. His logic is a kind of a first-order logic that can be used to give information about the current micture and its next state. This is achieved by a $\star$ symbol that can be applied to predicates. A stared predicate gives information about the \emph{next} state of the mixture, while an un-stared symbol gives information about the actual state of the mixture.\\
+issues by being expressive enough to represent molecular interactions while being simple enough to be ``compiled'' to a set of graph rewriting rules. His logic is a kind of a first-order logic that can be used to give information about the current mixture and its next state. This is achieved by a $\star$ symbol that can be applied to predicates. A stared predicate gives information about the \emph{next} state of the mixture, while an un-stared symbol gives information about the actual state of the mixture.\\
 
 For example in this logic, one can say ``The site s of the protein x turns ON'' with the following formula:
 $$ OFF(x.s) \land ON^\star(x.s) $$
@@ -117,11 +117,11 @@ Hence, there was a need for an intermediate language that is still made for expe
 \begin{enumerate}
 \item The syntax is of the original fragment is extended to include negation, let-definitions, and more.
 \item Criterion of validity are automatically checked and the language features a powerful type system to ensure that formulas make sense.
-\item The compiler is able to make some optimization based on the type system.
+\item The compiler is able to make some optimizations based on the type system.
 \item The compiler comes with a guard inference algorithm to help the programmer to focus on its system rather than finding the right expression.
 \end{enumerate}
 
-The next parts of this manual are organised as follows: first we introduce and explain the configuration file, next we describe precisely the language, and finally, we explain how the compiler was implemented.
+The next parts of this manual are organized as follows: first we introduce and explain the configuration file, next we describe precisely the language, and finally, we explain how the compiler was implemented.
 
 \section{Semantics of the configuration file}
 A \Iota{} program needs to be configured. For this purpose, the user needs to provide a configuration file separated in four parts:
@@ -137,7 +137,7 @@ The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \Iota{} allows the programmer to describe trees (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
-When its come to programming, significant tools are \emph{types}. \Iota{} use them extensively to ensure that formulas are well formed and to perform several optimizations.
+When its come to programming, significant tools are \emph{types}. \Iota{} use them extensively to ensure that formulas are well-formed and to perform several optimizations.
 Nodes, leaves and some operations on trees are thus \emph{typed}. These types are all defined in the configuration file, and are grouped in two families:
 \begin{itemize}
 \item Types without accessors; they will represent leaves (which corresponds to sites for proteins).
@@ -164,7 +164,7 @@ The user can specify other predicates using the configuration file. Note that us
 Predicates are separated into two categories: static and dynamic. Dynamic predicates can be prepended with the symbol \ocaml{+} in the language (which corresponds to the $\star$ symbol of Husson). \ocaml{Eq}, \ocaml{Link}, \ocaml{TLink} and \ocaml{Has} are dynamic.
 
 \subsection{Constraints}
-The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, and force some types to be linked only to some others. This is very useful to force a protein to be linked only to some other kind of protein.
+The \ocaml{Link} predicate is fully polymorphic but one can constrain its use, and force some types to be linked only to some others. This is very useful to force a protein to be linked only to some other kind of proteins.
 
 \subsection{Example}
 Here is a valid configuration file:
@@ -226,7 +226,7 @@ Formulas are about literals. A \Iota{} literal is either:
 Propositional formulas can be built over (fully applied) predicates on literals using usual combiners: \ocaml{not}, \ocaml{&&} and \ocaml{||}.
 
 \paragraph{About the negation}
-Husson's original syntax didn't included the negation (see Section \ref{hussonsyntax}). Fortunately, it can be added since every formula can be put in normal form (where the negation is only present on predicates) \emph{while} still being in Husson's fragment.
+Husson's original syntax didn't include the negation (see Section \ref{hussonsyntax}). Fortunately, it can be added since every formula can be put in normal form (where the negation is only present on predicates) \emph{while} still being in Husson's fragment.
 
 \paragraph{Examples}
 Here are some examples of formulas using the previous configuration:
@@ -250,7 +250,7 @@ This syntax and requirement are directly inspired by Husson's ``safe'' fragment.
   (\exists x, (A x \lor B x ) \land C x) &\iff (\exists x, A x \land B x) \lor (\exists x, B x \land C x)
 \end{align*}
 
-Hence our syntax is not more general but is simpler to use. This also considerably helps when compiling the \ocaml{TLink} predicate (Section \ref{para:tlink}) and when we run our guard inference algorithm (Section \ref{subsec:guardinfer}).
+Hence, our syntax is not more general but is simpler to use. This also considerably helps when compiling the \ocaml{TLink} predicate (Section \ref{para:tlink}) and when we run our guard inference algorithm (Section \ref{subsec:guardinfer}).
 
 \paragraph{Guard}
 A guard is a binary predicate involving exactly its two arguments. In \Iota{}, a guard is either \ocaml{Eq}, \ocaml{Link} or \ocaml{TLink}.
@@ -336,7 +336,7 @@ This standard choice gives a well-studied and powerful type system with an effic
 There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root) which is hard to check. This is bypassed using explicit typing of this operator.
 
 \subsubsection{About constraints}
-As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typecheck, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
+As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typechecks, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
 
 In details, defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
 \begin{itemize}
@@ -410,9 +410,9 @@ Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped
 We can then instantiate $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
 \subsubsection{Handling free variables}
-Unusually, the typechecking actually transform the inputed program. Indeed, free variables of definitions are handled specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference at this stage of the compilation will be difficult. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
+Unusually, the typechecking actually transform the input program. Indeed, free variables of definitions are handled specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference at this stage of the compilation will be difficult. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
 
-Since all definitions will also be inlined later, we rename unbounded free variable with new names to ensure that there will be no name capture.
+Since all definitions will also be inlined later, we rename unbounded free variables with new names to ensure that there will be no name capture.
 
 \subsection{Compilation}
 The compilation itself is divided into sub-steps.
@@ -428,7 +428,7 @@ All the definitions of \Iota{} are \emph{pure}, ie. without any effects, and not
 \paragraph{Compilation of TLink}
 \label{para:tlink}
 The \ocaml{TLink} predicate is not included in the target language, so we need to compile it.
-Saying that two trees are linked is equivalent to say that there is a node in the first tree linked to another node in the other tree. Hence the compilation is made by a disjunction of all possible couples.
+Saying that two trees are linked is equivalent to say that there is a node in the first tree that is linked to another node in the other tree. Hence, the compilation is made by a disjunction of all possible couples.
 Note that thanks to the type system, the compilation of \ocaml{TLink} produces only valid (with respect to the type system and user-defined constraints) possibilities.
 
 For example, using the following configuration:
@@ -439,23 +439,23 @@ type mol = m to mol | f to site | g to site
 Link site to site
 \end{minted}
 
-The expression \ocaml{TLink<mol,mol>(x,y)} will generate the following disjunction:
+The expression \ocaml{TLink<mol,site>(x,s)} will generate the following disjunction:
 \begin{minted}{ocaml}
-Link(x.m.g,y) || Link(x.m.f,y) || Link(x.g,y) || Link(x.f,y)
+Link(x.m.g,s) || Link(x.m.f,s) || Link(x.g,s) || Link(x.f,s)
 \end{minted}
 
 Note that there is for example no \ocaml{Link(x,y)} since it would violate the constraint that a site can only be linked to another site.
 
 \paragraph{Optimization}
-The compiler can do some optimization. It actually does only one, by replacing expressions of the form
+The compiler can do some optimizations. It actually does only one, by replacing expressions of the form
 \ocaml{parent<t1,t2>(x.f)} by \ocaml{x}.
-Note that this optimization is legal in the sense that, since the program typechecks, we know that \ocaml{x.f} is a valid object.
+This optimization is legal in the sense that, since the program typechecks, we know that \ocaml{x.f} is a valid object.
 
 \subsection{Guard inference}
 \label{subsec:guardinfer}
 
 \paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First of all, we put each formula into normal form, to fall back into Husson's syntax and simplify the guard inference.
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First, we put each formula into normal form, to fall back into Husson's syntax and simplify the guard inference.
 
 \paragraph{The guard inference algorithm}
 We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
@@ -519,8 +519,8 @@ The compiler can still be improved in several ways:
 \section{Syntax of the language}
 Nota Bene:
 \begin{itemize}
-\item \verb|[<rule>]| symbolise a list of \verb|<rule>|.
-\item \verb|[<rule> // <sep>]| symbolise a list of \verb|<rule>| separated by \verb|<sep>|.
+\item \verb|[<rule>]| symbolize a list of \verb|<rule>|.
+\item \verb|[<rule> // <sep>]| symbolize a list of \verb|<rule>| separated by \verb|<sep>|.
 \end{itemize}
 
 Comments à-la-OCaml can be used everywhere.
