@@ -92,7 +92,15 @@ A guard is a binary predicate involving exactly its two arguments (here, there i
 The ``independent'' and ``maintain'' parts are optional and made of formulas of the following form:
 $$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow \theta $$
 \label{criterion}
-where $Vars(\theta) \subseteq \{x,y_1,...,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.
+where $Vars(\theta) \subseteq \{x,y_1,...,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.\\
+
+In this subset, every free variable is universally quantified. For example, the following formula (adapted form Husson's thesis):
+$$ Link^\star(x.s,y.t) \land E(x) \text{ ensure } Link(z.s,w.t) \Rightarrow E(z) \Rightarrow E(w) $$
+
+Is equivalent to the following formula:
+$$\forall x\ y,\ Link^\star(x.s,y.t) \land E(x) \text{ ensure } \forall z\ w,\ Link(z.s,w.t) \Rightarrow E(z) \Rightarrow E(w) $$
+
+This program has one rule meaning that two proteins $x$ and $y$ can be linked through their $s$'s and $t$'s sites if $x$ is an Enzyme. Moreover, there is an invariant saying that if $x$ and $y$ are linked though the mentioned sites, and $x$ is an Enzyme, then $y$ must be an Enzyme.
 
 \subsection{A "logical" programming language}
 Unfortunately, it is tedious to write directly formulas in this subset:
@@ -277,21 +285,32 @@ A program is optionally followed by two lists:
 \item A list of formulas that must be \emph{maintained}.
 \end{enumerate}
 
-These lists are composed of formulas are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
+These lists are composed of formulas that are universally quantified and must respect Husson's criterion (see Section \ref{subsec:verification}).
 
 \subsection{Examples}
 \label{configex}
 \begin{minted}[frame=lines]{ocaml}
-let activate_and_link x y = Link (x.f, y.g) && +Active(x)
+(* A high order function *)
+let neq x y h = not (Eq(x,y)) && (h x y)
+
+(* Link two "mol" through s and g if at least one is active *)
+let link_if_active x y =
+  (Active(x) || Active(y)) && +Link(x.f,y.g)
+
+(* Require for x that there exists a y such that their
+   two trees are linked and one of the sites of y are open.
+   Note that the existentially quantified y is inferred *)
+let linked_other_op x =
+  TLink<mol,mol>(x,y) && (Open(y.f) || Open(y.g))
 
 in
 
-Has(a) && (forall u Link(a,u) -> (E(u) || TLink<mol,mol>(x,u)));
-(activate_and_link x y) || (activate_and_link x z)
+neq x y link_if_active;
+Active(x) -> (linked_other_op x)
 
 ensure
 
-Link (z.f, w.g) => (E(z) -> (E(w) && Open (z.f)))
+Link(x.f,y.g) => E(x) -> E(y)
 \end{minted}
 
 
