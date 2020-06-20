@@ -100,7 +100,7 @@ $$ Link^\star(x.s,y.t) \land E(x) \text{ ensure } Link(z.s,w.t) \Rightarrow E(z)
 Is equivalent to the following formula:
 $$\forall x\ y,\ Link^\star(x.s,y.t) \land E(x) \text{ ensure } \forall z\ w,\ Link(z.s,w.t) \Rightarrow E(z) \Rightarrow E(w) $$
 
-This program has one rule meaning that two proteins $x$ and $y$ can be linked through their $s$'s and $t$'s sites if $x$ is an Enzyme. Moreover, there is an invariant saying that if $x$ and $y$ are linked though the mentioned sites, and $x$ is an Enzyme, then $y$ must be an Enzyme.
+This program has one rule meaning that two proteins $x$ and $y$ can be linked through their sites $s$ and $t$ if $x$ is an Enzyme. Moreover, there is an invariant saying that if $x$ and $y$ are linked though the mentioned sites, and $x$ is an Enzyme, then $y$ must be an Enzyme.
 
 \subsection{A "logical" programming language}
 Unfortunately, it is tedious to write directly formulas in this subset:
@@ -293,7 +293,7 @@ These lists are composed of formulas that are universally quantified and must re
 (* A high order function *)
 let neq x y h = not (Eq(x,y)) && (h x y)
 
-(* Link two "mol" through s and g if at least one is active *)
+(* Link two "mol" through sites s and g if at least one is active *)
 let link_if_active x y =
   (Active(x) || Active(y)) && +Link(x.f,y.g)
 
@@ -503,14 +503,15 @@ dune runtest
 For now, it ensures that files that must compile are indeed compiling, and files that must fail to compile are indeed failing. It also ensures that the compiler is \emph{reentrant}, i.e. that if a file compiles to a program $A$, then the compilation of $A$ gives the exact same program.
 
 \section{Conclusion}
-\Iota{} is a tiny but powerful language which make a step after Husson's one toward an accessible language for molecular biologists. It addresses a good number of practical issues with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
+\Iota{} is a tiny but powerful language making a step after Husson's one toward an accessible language for molecular biologists. It addresses a good number of practical issues with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
 
-Contrary to approaches like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small language. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.\\
+Contrary to an approach like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small language. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.\\
 
 The compiler can still be improved in several ways:
 \begin{itemize}
 \item We think that heuristics can be made to generate formulas that will behave well with the compilation of the logic to actual \Kappa{} rules.
 \item One might want to add explicit typing to the syntax of \Iota{}. For now, there is no simple way to force the type of a variable other than defining a dedicated predicate for each type. Adding a syntax for explicit typing is only a mechanical work.
+\item Adding anonymous functions. This also seems to only be a mechanical work.
 \item Explicit typing was required when using the \ocaml{parent} operator. Maybe there is a way to relax this requirement (for example, when there is only one possible parent for this type) and let the inference engine do the work.
 \item \Kappa{} can actually be used to model other systems than molecular biology. Following this interpretation, \Iota{} maybe applies well to these fields.
 \end{itemize}
