@@ -481,12 +481,12 @@ Some efforts were made to be able to test the compiler. The test-suite is locate
 \begin{minted}{shell}
 dune runtest
 \end{minted}
-For now, it ensures that files that must compile are indeed compiling, and files that must fail to compile are indeed failing.
+For now, it ensures that files that must compile are indeed compiling, and files that must fail to compile are indeed failing. It also ensures that the compiler is \emph{reentrant}, i.e. that if a file compiles to a program $A$, then the compilation of $A$ gives the exact same program.
 
 \section{Conclusion}
-\Iota{} is a tiny but powerful language which make a step after Husson's one toward an accessible language for molecular biologist. It addresses a good number of practical issue with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
+\Iota{} is a tiny but powerful language which make a step after Husson's one toward an accessible language for molecular biologists. It addresses a good number of practical issues with Husson's logic and, while still made for experts, gives the possibility to write big and correct formulas by delegating some tasks to the compiler.\\
 
-Contrary to approaches like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small language. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.
+Contrary to approaches like LittleB \cite{littleb} which is plain LISP, \Iota{} is a very small language. This smalness is also its strength: it is very simple to analyse it and compile it to another language, while analysing full LISP is awfully more complicated.\\
 
 The compiler can still be improved in several ways:
 \begin{itemize}
