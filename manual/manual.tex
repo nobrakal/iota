@@ -273,7 +273,7 @@ There is a few things to note:
 
 \subsubsection{A relaxed rule for free variables}
 \label{sec:arelaxedrule}
-When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded; thus we need to infer a guard for free variables in let-definitions. We give an algorithm in Section \ref{subsec:guardinfer} allowing one to write a definition such as:
+When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded; thus we need to infer a guard for free variables in let-definitions. We give an algorithm for guard inference in Section \ref{subsec:guardinfer} allowing one to write a definition such as:
 \begin{minted}{ocaml}
 let f x = Eq(x,z) && Link(x,z)
 \end{minted}
@@ -469,7 +469,7 @@ This optimization is legal in the sense that, since the program typechecks, we k
 \label{subsec:guardinfer}
 
 \paragraph{Normal form of formulas}
-Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First, we put each formula into normal form, to fall back into Husson's syntax and simplify the guard inference.
+Any formula can be put in a \emph{normal form}, where negation is only present on leaves. First, we put each formula into their normal form, to fall back into Husson's syntax and simplify the guard inference.
 
 \paragraph{The guard inference algorithm}
 We give a general recursive algorithm to infer a list of disjunctive guards for a variable in Husson's fragment.\\
@@ -494,8 +494,10 @@ More precisely, for each permutation $\pi$, it runs the mentioned algorithm for 
 The resulting structure must satisfy some properties that cannot be hard-coded in the syntax. We must ensure that every guard is indeed a well-formed guard, and that the two parts ``ensure'' and ``maintain'' are well-formed with respect to Husson's criterion (see Section \ref{criterion}). This pass only checks if these properties are respected.
 
 \section{About the compiler}
+The code source is available at \url{https://github.com/nobrakal/iota}.
 \subsection{Compiling}
-The compiler is written in \Ocaml{}\cite{ocaml}. It was designed to be built with \Dune{}\cite{dune}. It is itself separated into two components:
+The compiler is written in \Ocaml{}\cite{ocaml}. It was designed to be built with \Dune{}\cite{dune}.
+It is itself separated into two components:
 
 \begin{enumerate}
 \item A library, located in \verb|lib/| were all the work is made. Its entry-point is \verb|lib/main.ml|. It is fully documented using \Odoc{}\cite{odoc}. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
