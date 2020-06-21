@@ -84,17 +84,19 @@ Husson identified a ``safe'' subset of his logic for which we know an algorithm 
 \label{hussonsyntax}
 
 $$ \theta_1,... ,\theta_k \text{ ensure } I_1,...,I_k \text{ maintain } I_{k+1},...,I_{k'} $$
-where:
+
+Each $\theta_i$ represents a local ``reaction'' (one can see them as extended graph rewriting rules). Each $I_i$ is and invariant that represent a ``global knowledge'' which must be true for every transition.\\
+
+More precisely:
 $$ \theta ::= L | \forall x\ \alpha(x,y) \Rightarrow \theta | \exists x\ \alpha(x,y) \land \theta | \theta \land \theta | \theta \lor \theta \quad \quad \forall L \in \text{Lit},x,y,\alpha \in \text{Guard}$$
 
 A guard is a binary predicate involving exactly its two arguments (here, there is only two possible predicates: equality and linkability). Note that since every quantified variable is guarded, this fragment is strictly less expressive than the full logic.
-
 The ``independent'' and ``maintain'' parts are optional and made of formulas of the following form:
 $$ I ::= \alpha_1(x,y_1) \Rightarrow ...\Rightarrow \alpha_q(x,y_q) \Rightarrow \theta $$
 \label{criterion}
 where $Vars(\theta) \subseteq \{x,y_1,...,y_q\}$ and for each dynamic literal $L \in \theta$ we have $Var(L) = \{x\}$.\\
 
-In this subset, every free variable is universally quantified. For example, the following formula (adapted form Husson's thesis):
+In this subset, each free variable is universally quantified. For example, the following formula (adapted form Husson's thesis):
 $$ Link^\star(x.s,y.t) \land E(x) \text{ ensure } Link(z.s,w.t) \Rightarrow E(z) \Rightarrow E(w) $$
 
 Is equivalent to the following formula:
@@ -124,7 +126,7 @@ Hence, there was a need for an intermediate language that is still made for expe
 The next parts of this manual are organized as follows: first we introduce and explain the configuration file, next we describe precisely the language, and finally, we explain how the compiler was implemented.
 
 \section{Semantics of the configuration file}
-A \Iota{} program needs to be configured. For this purpose, the user needs to provide a configuration file separated in four parts:
+A \Iota{} program needs to be configured (to give a universe in which we will write formulas). For this purpose, the user needs to provide a configuration file separated in four parts:
 \begin{enumerate}
 \item The definition of constants.
 \item The definition of types of objects.
@@ -134,7 +136,8 @@ A \Iota{} program needs to be configured. For this purpose, the user needs to pr
 
 The full syntax is given in Section \ref{subsec:syntaxconfig}.
 \subsection{The maxdepth parameter}
-\Iota{} allows the programmer to describe trees (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree. This is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
+\Iota{} allows the programmer to describe trees (a protein with two sites is a node with two leaves). These trees have \emph{bounded} size, thus one must specify the maximum size of a tree through the \ocaml{maxdepth} constant. This is actually the only constant needed.
+The parameter is used in particular when compiling the \ocaml{TLink} predicate, see Section \ref{para:tlink}.
 
 \subsection{Types}
 When its come to programming, significant tools are \emph{types}. \Iota{} use them extensively to ensure that formulas are well-formed and to perform several optimizations.
@@ -202,7 +205,7 @@ This file declares four types:
 The last line specify a constraint: a leaf of type \ocaml{rsite} can only be linked to leaves of type \ocaml{site}.
 
 \section{Semantics of a \Iota{} program}
-Once the configuration is written, one can write a program using it. The syntax is fully described in Section \ref{subsec:syntaxprog}. A \Iota{} program is a file composed of four parts (the last three are exactly from Husson's thesis) :
+Once the configuration is written, one can write a program using it. The syntax is fully described in Section \ref{subsec:syntaxprog}. A \Iota{} program is a file composed of four parts (the last three are exactly from Husson's thesis):
 
 \begin{enumerate}
 \item A list of let-definitions.
@@ -264,11 +267,12 @@ let f h x y = (h x) && (e y)
 There is a few things to note:
 \begin{itemize}
 \item Definitions are not recursive and are parsed up-to-bottom. Thus, in the example, \ocaml{f} can use \ocaml{e} but the converse is false.
-\item All free variables of right hand-side must be in the left hand-side, with some exceptions (see below).
-\item The language is \emph{high-order}, meaning that one definition can take another definition as an argument.
+\item All free variables of the right hand-side must be in the left hand-side, with some exceptions (see below).
+\item This is a \emph{high-order} language, meaning that one definition can take another definition as an argument.
 \end{itemize}
 
 \subsubsection{A relaxed rule for free variables}
+\label{sec:arelaxedrule}
 When writing a definition, it is convenient to see free variables as \emph{existentially} quantified ones. The problem is that, in \Iota{}, every quantified variable must be guarded; thus we need to infer a guard for free variables in let-definitions. We give an algorithm in Section \ref{subsec:guardinfer} allowing one to write a definition such as:
 \begin{minted}{ocaml}
 let f x = Eq(x,z) && Link(x,z)
@@ -290,16 +294,16 @@ These lists are composed of formulas that are universally quantified and must re
 \subsection{Examples}
 \label{configex}
 \begin{minted}[frame=lines]{ocaml}
-(* A high order function *)
+(* A high-order function. *)
 let neq x y h = not (Eq(x,y)) && (h x y)
 
-(* Link two "mol" through sites s and g if at least one is active *)
+(* Link two "mol" through sites s and g if at least one is active. *)
 let link_if_active x y =
   (Active(x) || Active(y)) && +Link(x.f,y.g)
 
 (* Require for x that there exists a y such that their
    two trees are linked and one of the sites of y are open.
-   Note that the existentially quantified y is inferred *)
+   Note that the existentially quantified y is inferred. *)
 let linked_other_op x =
   TLink<mol,mol>(x,y) && (Open(y.f) || Open(y.g))
 
@@ -336,14 +340,24 @@ This standard choice gives a well-studied and powerful type system with an effic
 There is a challenge to infer the type of an expression using \ocaml{parent} since its usage introduce requirements about its argument (in the expression \ocaml{parent(x)}, \ocaml{x} must not be a root) which is hard to check. This is bypassed using explicit typing of this operator.
 
 \subsubsection{About constraints}
-As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Moreover, the algorithm now tries at the end to instantiate each type variable (hence, if a program typechecks, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
+As mentioned before, the use of the \ocaml{Link} predicate can be constrained. The validity check is made by modifying the classical algorithm W implementation: let-definitions now carry a map to remember which variable is linked to which type. Then, when we discover the concrete type of a variable, we can check if constrains are fulfilled. Moreover, the algorithm tries at the end to instantiate each type variable (hence, if a program typechecks, we know fore sure that it exists at least a type for each variable respecting the links constraints).\\
 
-In details, defined constraints give a function $type \to type\ list\ option$ which represents the ``linkability'' of a type:
+In details, a type can be:
+
+\begin{multicols}{2}
+  \begin{itemize}
+  \item A type variable.
+  \item An arrow between two types.
+  \item A ground type (a type defined in the configuration file).
+  \end{itemize}
+\end{multicols}
+
+Defined constraints give a function $groundtype \to groundtype\ list\ option$ which represents the ``linkability'' of a type:
 \begin{itemize}
 \item $None$ means that a node of this type can be linked to any node of any other type.
 \item $Some\ xs$ means that a node of this type can only be linked to node that have its type in $xs$.
 \end{itemize}
-When typing with algorithm W, each definition carries a map of type $typevariable \to (typevariable, type)\ either$ registering which variable is linked to which type. Then, when discovering the ground type (a type without an arrow that is not a variable) corresponding to a type variable, we can ensure that constraints are respected.
+When typing with algorithm W, each definition carries a map of type $typevariable \to (typevariable, groundtype)\ either$ registering which variable is linked to which type. Then, when discovering the ground type corresponding to a type variable, we can ensure that constraints are respected.
 
 For example (using the configuration given in Section \ref{configex}):
 \begin{minted}[frame=lines]{ocaml}
@@ -410,7 +424,7 @@ Note that the line about the type variable $\alpha$ in tabular $(e)$ was dropped
 We can then instantiate $\beta$ to any type, since the linkabilty of $site$ is not constrained.
 
 \subsubsection{Handling free variables}
-Unusually, the typechecking actually transform the input program. Indeed, free variables of definitions are handled specifically since we want to try to quantify them existentially. Sadly, the language is still very rich and doing the guard inference at this stage of the compilation will be difficult. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
+Unusually, the typechecking actually transform the input program. Indeed, free variables of definitions are handled specifically since we want to try to quantify them existentially (as explained in Section \ref{sec:arelaxedrule}). Sadly, the language is still very rich and doing the guard inference at this stage of the compilation will be difficult. Thus, we introduce a new quantifier which mark the presence of an unbounded variable for later inference.
 
 Since all definitions will also be inlined later, we rename unbounded free variables with new names to ensure that there will be no name capture.
 
@@ -481,7 +495,7 @@ The resulting structure must satisfy some properties that cannot be hard-coded i
 
 \section{About the compiler}
 \subsection{Compiling}
-The compiler is written using \Ocaml{}\cite{ocaml}. It was designed to be built with \Dune{}\cite{dune}. It is itself separated into two components:
+The compiler is written in \Ocaml{}\cite{ocaml}. It was designed to be built with \Dune{}\cite{dune}. It is itself separated into two components:
 
 \begin{enumerate}
 \item A library, located in \verb|lib/| were all the work is made. Its entry-point is \verb|lib/main.ml|. It is fully documented using \Odoc{}\cite{odoc}. Online documentation is available at: \url{https://nobrakal.github.io/iota/iota/}, or can be built using:
